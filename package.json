@@ -1,0 +1,14 @@
+{
+  "name": "guess-who",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "build": "npm run build --workspace client",
+    "start": "npm run start --workspace server"
+  }
+}
