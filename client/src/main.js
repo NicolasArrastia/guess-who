@@ -20,6 +20,8 @@ let palette = { avatars: [], colors: [] }
 let composerTarget = null
 let pendingImage = ''
 let flipped = new Set()
+let seated = new Set()
+let dealt = new Set()
 
 const url = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`
 
@@ -56,8 +58,11 @@ function connect() {
       cards = msg.cards
       const self = players.find((player) => player.id === me.id)
       if (self) me = self
+      /* forget flips for cards that were removed or replaced */
+      flipped = new Set([...flipped].filter((id) => cards.some((card) => card.id === id)))
       renderSeats()
       renderDeck()
+      syncChrome()
     } else if (msg.t === 'error') {
       if (me) toast(msg.message)
       else showError(msg.message)
@@ -69,45 +74,85 @@ function connect() {
     cards = []
     players = []
     flipped = new Set()
+    seated = new Set()
+    dealt = new Set()
     seats.replaceChildren()
     deck.replaceChildren()
     closeComposer()
     closePicker()
+    closeZoom()
     show(login)
     showError('Disconnected from the server.')
   })
 }
 
+/* Cards sit on the table in front of their player's seat (24% radius vs the seat's 42%). */
+const CARD_RADIUS = 24
+
+function sizeCards() {
+  const width = seats.clientWidth || 600
+  const count = players.length
+  const byCount = count <= 4 ? 158 : count <= 6 ? 138 : count <= 8 ? 118 : 100
+  const w = Math.max(84, Math.min(byCount, Math.floor(width * 0.2)))
+  seats.style.setProperty('--card-w', `${w}px`)
+  seats.style.setProperty('--card-fs', `${Math.max(10, Math.round(w * 0.105))}px`)
+}
+
 function renderSeats() {
   const count = Math.max(players.length, 1)
-  seats.replaceChildren(
-    ...players.map((player, index) => {
-      const angle = (index / count) * Math.PI * 2 - Math.PI / 2
-      const isMe = player.id === me.id
-      const held = isMe ? cards.filter((card) => card.toId === me.id).length : 0
+  sizeCards()
+  let fresh = 0
+  let dealN = 0
+  const nodes = []
 
-      const seat = document.createElement('div')
-      seat.className = 'seat' + (isMe ? ' me' : '')
-      seat.dataset.id = player.id
-      seat.style.left = `${50 + Math.cos(angle) * 42}%`
-      seat.style.top = `${50 + Math.sin(angle) * 42}%`
-      seat.style.background = player.avatar.color
+  players.forEach((player, index) => {
+    const angle = (index / count) * Math.PI * 2 - Math.PI / 2
+    const isMe = player.id === me.id
+    const card = cards.find((entry) => entry.toId === player.id)
+    const held = isMe && Boolean(card)
 
-      seat.innerHTML = `
-        <span class="emoji">${player.avatar.emoji}</span>
-        <span class="name"></span>
-        ${held ? `<span class="badge" title="You have ${held} card${held > 1 ? 's' : ''} face down on the table">🃏 ${held}</span>` : ''}
-        ${isMe ? '<span class="caret">▾</span>' : ''}
-      `
-      seat.querySelector('.name').textContent = player.username
-      seat.title = isMe
-        ? `Click to change your avatar${held ? ` · ${held} card${held > 1 ? 's' : ''} face down on the table` : ''}`
-        : `Click to hide a card in front of ${player.username}`
-      return seat
-    }),
-  )
+    const seat = document.createElement('div')
+    seat.className = 'seat' + (isMe ? ' me' : '')
+    seat.dataset.id = player.id
+    seat.style.left = `${50 + Math.cos(angle) * 42}%`
+    seat.style.top = `${50 + Math.sin(angle) * 42}%`
+    seat.style.setProperty('--seat-bg', player.avatar.color)
+    if (!seated.has(player.id)) {
+      seat.classList.add('seat-in')
+      seat.style.animationDelay = `${fresh++ * 60}ms`
+    }
+
+    seat.innerHTML = `
+      <span class="emoji">${player.avatar.emoji}</span>
+      <span class="name"></span>
+      ${held ? '<span class="badge" title="You have a card face down — tap Watch to peek">🃏</span>' : ''}
+      ${isMe ? '<span class="caret">▾</span>' : ''}
+    `
+    const nameNode = seat.querySelector('.name')
+    nameNode.textContent = player.admin ? `👑 ${player.username}` : player.username
+    if (player.admin) nameNode.classList.add('host')
+    seat.title = isMe
+      ? `Click to change your avatar${held ? ' · your card is face down — tap Watch to peek' : ''}`
+      : card
+        ? `Click to give ${player.username} a new card (replaces theirs)`
+        : `Click to give ${player.username} a card`
+    nodes.push(seat)
+
+    if (card) {
+      const node = buildCard(player, card, angle)
+      if (!dealt.has(card.id)) {
+        node.classList.add('deal')
+        node.style.animationDelay = `${dealN++ * 70}ms`
+      }
+      nodes.push(node)
+    }
+  })
+
+  seats.replaceChildren(...nodes)
   status.textContent =
     players.length === 1 ? 'Share the room code to invite players.' : `${players.length} players at the table.`
+  seated = new Set(players.map((player) => player.id))
+  dealt = new Set(cards.map((card) => card.id))
 }
 
 const nameOf = (id) => players.find((player) => player.id === id)?.username ?? 'a player who left'
@@ -137,66 +182,108 @@ function caption(text) {
   return node
 }
 
-/* A card sits face down for the player it was assigned to, and face up for everyone else. */
+const cardButton = (label, title, className = 'card-btn') => {
+  const button = document.createElement('button')
+  button.className = className
+  button.type = 'button'
+  button.textContent = label
+  button.title = title
+  return button
+}
 
-function myCard(card) {
-  const isUp = flipped.has(card.id)
-  const entry = document.createElement('div')
-  entry.className = 'card ' + (isUp ? 'open' : 'closed')
-  entry.dataset.id = card.id
-
-  if (isUp) {
-    entry.append(cardBody(card), caption(`your card · from ${nameOf(card.fromId)}`))
-  } else {
-    const glyph = document.createElement('span')
-    glyph.className = 'back-glyph'
-    glyph.textContent = '🂠'
-    entry.append(glyph, caption('tap to flip'))
-  }
-
-  entry.addEventListener('click', () => {
-    flipped.has(card.id) ? flipped.delete(card.id) : flipped.add(card.id)
-    const swapped = myCard(card)
-    swapped.classList.add('swap')
-    entry.replaceWith(swapped)
-  })
-
-  const del = document.createElement('button')
-  del.className = 'card-x'
-  del.type = 'button'
-  del.textContent = '✕'
-  del.title = 'Delete this card'
+function removeButton(card) {
+  const del = cardButton('✕', 'Remove this card', 'card-x')
   del.addEventListener('click', (event) => {
     event.stopPropagation()
     ws.send(JSON.stringify({ t: 'removeCard', id: card.id }))
   })
-  entry.append(del)
+  return del
+}
+
+/*
+ * One card per player, lying on the table in front of their seat:
+ * face down for its own holder (tap Watch to peek), face up for everyone else (click to zoom).
+ */
+
+function buildCard(player, card, angle) {
+  const isMine = player.id === me.id
+  const isUp = !isMine || flipped.has(card.id)
+  const entry = document.createElement('div')
+  entry.className = `card table-card ${isUp ? (isMine ? 'open' : 'shown') : 'closed'}`
+  entry.dataset.id = player.id
+  entry.dataset.card = card.id
+  entry.style.left = `${50 + Math.cos(angle) * CARD_RADIUS}%`
+  entry.style.top = `${50 + Math.sin(angle) * CARD_RADIUS}%`
+
+  const toggle = () => {
+    flipped.has(card.id) ? flipped.delete(card.id) : flipped.add(card.id)
+    const next = buildCard(player, card, angle)
+    next.classList.add('flip')
+    entry.replaceWith(next)
+  }
+
+  if (isUp) {
+    entry.append(
+      cardBody(card),
+      caption(
+        isMine ? `your card · from ${nameOf(card.fromId)}` : `${player.username}’s card · from ${nameOf(card.fromId)}`,
+      ),
+    )
+    entry.addEventListener('click', () => openZoom(card))
+    if (isMine) {
+      const hide = cardButton('🙈 Hide', 'Hide your card again')
+      hide.addEventListener('click', (event) => {
+        event.stopPropagation()
+        toggle()
+      })
+      entry.append(hide)
+    }
+    if (isMine || me.admin) entry.append(removeButton(card))
+  } else {
+    const glyph = document.createElement('span')
+    glyph.className = 'back-glyph'
+    glyph.textContent = '🂠'
+    const watch = cardButton('👁 Watch', 'Reveal your card')
+    watch.addEventListener('click', (event) => {
+      event.stopPropagation()
+      toggle()
+    })
+    entry.append(glyph, watch)
+    entry.addEventListener('click', toggle)
+    entry.append(removeButton(card))
+  }
 
   return entry
 }
 
-function theirCard(card) {
-  const entry = document.createElement('div')
-  entry.className = 'card shown'
-  entry.append(cardBody(card), caption(`for ${nameOf(card.toId)} · from ${nameOf(card.fromId)}`))
-  return entry
+/* zoom modal — click any face-up card to see it big */
+
+function openZoom(card) {
+  const img = $('zoom-img')
+  if (card.image) img.src = card.image
+  else img.removeAttribute('src')
+  img.hidden = !card.image
+  const text = $('zoom-text')
+  text.textContent = card.text || ''
+  text.hidden = !card.text
+  $('zoom-caption').textContent =
+    card.toId === me.id ? `your card · from ${nameOf(card.fromId)}` : `${nameOf(card.toId)}’s card · from ${nameOf(card.fromId)}`
+  $('zoom').hidden = false
+}
+
+function closeZoom() {
+  $('zoom').hidden = true
 }
 
 function renderDeck() {
-  const live = new Set(cards.map((card) => card.id))
-  flipped = new Set([...flipped].filter((id) => live.has(id)))
+  const empty = document.createElement('div')
+  empty.className = 'table-center'
+  empty.innerHTML = 'Guess<br />Who'
+  deck.replaceChildren(empty)
+}
 
-  if (!cards.length) {
-    const empty = document.createElement('div')
-    empty.className = 'table-center'
-    empty.innerHTML = 'Guess<br />Who'
-    deck.replaceChildren(empty)
-    return
-  }
-
-  const mine = cards.filter((card) => card.toId === me.id)
-  const theirs = cards.filter((card) => card.toId !== me.id)
-  deck.replaceChildren(...mine.map(myCard), ...theirs.map(theirCard))
+function syncChrome() {
+  $('clear').hidden = !(me?.admin && cards.length > 0)
 }
 
 /* avatar picker */
@@ -375,16 +462,16 @@ seats.addEventListener('click', (event) => {
   else openComposer(seat.dataset.id)
 })
 
-const seatAt = (event) => event.target.closest('.seat')
-const clearOver = () => seats.querySelectorAll('.seat.over').forEach((n) => n.classList.remove('over'))
+const targetAt = (event) => event.target.closest('.seat, .table-card')
+const clearOver = () => seats.querySelectorAll('.over').forEach((n) => n.classList.remove('over'))
 
 seats.addEventListener('dragover', (event) => {
-  const seat = seatAt(event)
-  if (!seat) return
+  const target = targetAt(event)
+  if (!target) return
   event.preventDefault()
-  event.dataTransfer.dropEffect = seat.dataset.id === me.id ? 'none' : 'copy'
+  event.dataTransfer.dropEffect = target.dataset.id === me.id ? 'none' : 'copy'
   clearOver()
-  if (seat.dataset.id !== me.id) seat.classList.add('over')
+  if (target.dataset.id !== me.id) target.classList.add('over')
 })
 
 seats.addEventListener('dragleave', clearOver)
@@ -392,9 +479,9 @@ seats.addEventListener('dragleave', clearOver)
 seats.addEventListener('drop', async (event) => {
   event.preventDefault()
   clearOver()
-  const seat = seatAt(event)
-  if (!seat || seat.dataset.id === me.id) return
-  await attachDrop(event, seat.dataset.id)
+  const target = targetAt(event)
+  if (!target || target.dataset.id === me.id) return
+  await attachDrop(event, target.dataset.id)
 })
 
 seats.addEventListener('dragend', clearOver)
@@ -417,7 +504,7 @@ $('send').addEventListener('click', () => {
   const name = players.find((player) => player.id === composerTarget)?.username ?? 'player'
   ws.send(JSON.stringify({ t: 'addCard', toId: composerTarget, text, image: pendingImage }))
   closeComposer()
-  toast(`Hidden card set in front of ${name}.`)
+  toast(`Gave a card to ${name}.`)
 })
 
 $('cancel').addEventListener('click', closeComposer)
@@ -448,10 +535,25 @@ $('copy').addEventListener('click', () => {
 
 $('leave').addEventListener('click', () => ws?.close())
 
+$('clear').addEventListener('click', () => {
+  ws.send(JSON.stringify({ t: 'clearCards' }))
+  toast('Cleared every card at the table.')
+})
+
+$('zoom-close').addEventListener('click', closeZoom)
+$('zoom').addEventListener('click', (event) => {
+  if (event.target === $('zoom')) closeZoom()
+})
+
+window.addEventListener('resize', () => {
+  if (me) sizeCards()
+})
+
 document.addEventListener('keydown', (event) => {
   if (event.key !== 'Escape') return
   closeComposer()
   closePicker()
+  closeZoom()
 })
 
 for (const type of ['dragover', 'drop']) {

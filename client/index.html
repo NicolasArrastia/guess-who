@@ -9,6 +9,7 @@
   <body>
     <main id="app">
       <section id="login" class="screen">
+        <div class="card-fan" aria-hidden="true"><span>🂡</span><span>🂠</span><span>🂮</span></div>
         <h1>Guess Who</h1>
         <p class="sub">Jump into a room and gather around the table.</p>
         <input id="username" maxlength="20" placeholder="Username" autocomplete="off" autofocus />
@@ -27,7 +28,10 @@
             Room <strong id="room-code-value">----</strong>
             <button id="copy" title="Copy code">Copy</button>
           </div>
-          <button id="leave" class="ghost">Leave</button>
+          <div class="header-actions">
+            <button id="clear" class="ghost danger" hidden>Clear all cards</button>
+            <button id="leave" class="ghost">Leave</button>
+          </div>
         </header>
 
         <div class="table-wrap">
@@ -38,15 +42,15 @@
 
         <footer>
           <p id="status">Waiting for players…</p>
-          <p class="hint-line">Click a player to hide a card in front of them · your own cards land face down, tap to flip</p>
+          <p class="hint-line">Click a player to give them a card · tap Watch to see yours · click any card to zoom</p>
         </footer>
       </section>
     </main>
 
     <div id="composer" class="overlay" hidden>
       <div class="sheet">
-        <h3>Assign a hidden card to <span id="composer-name"></span></h3>
-        <p class="sheet-hint">It stays face down for them and is shown to everyone else — never to you.</p>
+        <h3>Assign a card to <span id="composer-name"></span></h3>
+        <p class="sheet-hint">Everyone sees it face up — they see it face down until they tap Watch. Replaces any card they already hold.</p>
         <textarea id="card-text" maxlength="200" rows="3" placeholder="Write something secret…"></textarea>
         <div id="drop" class="drop">
           <img id="preview" alt="" hidden />
@@ -62,6 +66,15 @@
           <button id="send" class="primary" type="button">Assign card</button>
         </div>
       </div>
+    </div>
+
+    <div id="zoom" class="overlay zoom" hidden>
+      <figure class="zoom-card">
+        <img id="zoom-img" alt="" hidden />
+        <p id="zoom-text" hidden></p>
+        <figcaption id="zoom-caption"></figcaption>
+        <button id="zoom-close" class="ghost" type="button">✕ Close</button>
+      </figure>
     </div>
 
     <div id="toast" class="toast" hidden></div>

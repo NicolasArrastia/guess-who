@@ -8,7 +8,6 @@ const PORT = Number(process.env.PORT) || 3001
 const DIST = fileURLToPath(new URL('../client/dist/', import.meta.url))
 const MAX_TEXT = 200
 const MAX_IMAGE_CHARS = 1_500_000
-const MAX_CARDS = 5
 const IMAGE_PATTERN = /^data:image\/(png|jpeg|webp|gif);base64,[A-Za-z0-9+/]+={0,2}$/
 
 const AVATARS = ['🐸', '🦊', '🐼', '🐯', '🦁', '🐨', '🐵', '🦉', '🐙', '🦄', '🐝', '🐬']
@@ -59,11 +58,14 @@ const publicView = (player) => ({ id: player.id, username: player.username, avat
 const publicCard = (card) => ({ id: card.id, fromId: card.fromId, toId: card.toId, text: card.text, image: card.image })
 
 function snapshot(room) {
-  return [...room.players.values()].map(publicView)
+  return [...room.players.values()].map((player) => ({
+    ...publicView(player),
+    admin: player.id === room.adminId,
+  }))
 }
 
-const visibleCards = (room, viewerId) =>
-  room.cards.filter((card) => card.fromId !== viewerId).map(publicCard)
+/* Everyone at the table sees every card: the holder gets it face-down client-side. */
+const publicCards = (room) => room.cards.map(publicCard)
 
 function broadcast(room) {
   for (const viewer of room.players.values()) {
@@ -73,7 +75,7 @@ function broadcast(room) {
         t: 'state',
         code: room.code,
         players: snapshot(room),
-        cards: visibleCards(room, viewer.id),
+        cards: publicCards(room),
       }),
     )
   }
@@ -83,6 +85,7 @@ function join(ws, username, room) {
   const id = crypto.randomUUID()
   const player = { id, username, avatar: avatarFor(id), ws }
   room.players.set(player.id, player)
+  if (!room.adminId) room.adminId = id
   ws.player = player
   ws.room = room
   ws.send(
@@ -99,11 +102,14 @@ function join(ws, username, room) {
 function leave(ws) {
   const room = ws.room
   if (!room) return
-  room.players.delete(ws.player.id)
-  room.cards = room.cards.filter((card) => card.fromId !== ws.player.id && card.toId !== ws.player.id)
+  const goneId = ws.player.id
+  room.players.delete(goneId)
+  room.cards = room.cards.filter((card) => card.fromId !== goneId && card.toId !== goneId)
   ws.room = null
-  if (room.players.size === 0) rooms.delete(room.code)
-  else broadcast(room)
+  if (room.players.size === 0) return void rooms.delete(room.code)
+  /* Map preserves join order, so the next oldest player becomes the new host. */
+  if (room.adminId === goneId) room.adminId = room.players.keys().next().value
+  broadcast(room)
 }
 
 function fail(ws, message) {
@@ -121,18 +127,26 @@ function addCard(ws, msg) {
   const target = ws.room.players.get(sanitize(msg?.toId, 64))
   if (!target) return fail(ws, 'That player is no longer at the table.')
   if (target.id === ws.player.id) return fail(ws, 'Cards go to another player.')
-  const held = ws.room.cards.filter((card) => card.toId === target.id).length
-  if (held >= MAX_CARDS) return fail(ws, 'They already have cards to keep secret.')
 
+  /* One card per player, like a card on your forehead: a new assignment replaces the old. */
+  ws.room.cards = ws.room.cards.filter((card) => card.toId !== target.id)
   ws.room.cards.push({ id: crypto.randomUUID(), fromId: ws.player.id, toId: target.id, text, image })
   broadcast(ws.room)
 }
 
 function removeCard(ws, msg) {
   const id = sanitize(msg?.id, 64)
-  const index = ws.room.cards.findIndex((card) => card.id === id && card.toId === ws.player.id)
-  if (index === -1) return
-  ws.room.cards.splice(index, 1)
+  const card = ws.room.cards.find((entry) => entry.id === id)
+  if (!card) return
+  const isHost = ws.room.adminId === ws.player.id
+  if (card.toId !== ws.player.id && !isHost) return fail(ws, 'Only the host can remove someone else’s card.')
+  ws.room.cards = ws.room.cards.filter((entry) => entry.id !== id)
+  broadcast(ws.room)
+}
+
+function clearCards(ws) {
+  if (ws.room.adminId !== ws.player.id) return fail(ws, 'Only the host can clear every card.')
+  ws.room.cards = []
   broadcast(ws.room)
 }
 
@@ -185,6 +199,7 @@ wss.on('connection', (ws) => {
 
     if (msg?.t === 'addCard') return ws.room ? addCard(ws, msg) : fail(ws, 'Join a room first.')
     if (msg?.t === 'removeCard') return ws.room ? removeCard(ws, msg) : fail(ws, 'Join a room first.')
+    if (msg?.t === 'clearCards') return ws.room ? clearCards(ws) : fail(ws, 'Join a room first.')
     if (msg?.t === 'avatar') return ws.room ? changeAvatar(ws, msg) : fail(ws, 'Join a room first.')
 
     const username = sanitize(msg?.username, 20)
