@@ -14,6 +14,11 @@ const MAX_IMAGE_EDGE = 640
 
 let ws = null
 let me = null
+/* remembered create/join payload, so a dropped socket can rejoin the same room */
+let pending = null
+let session = null
+let attempts = 0
+let retryTimer = null
 let players = []
 let cards = []
 let palette = { avatars: [], colors: [] }
@@ -43,13 +48,24 @@ function toast(message) {
   node.timer = setTimeout(() => (node.hidden = true), 3000)
 }
 
-function connect() {
-  ws = new WebSocket(url)
-  ws.addEventListener('message', (event) => {
+function connect(resume) {
+  const socket = new WebSocket(url)
+  ws = socket
+  socket.addEventListener('open', () => {
+    attempts = 0
+    resume?.()
+  })
+  socket.addEventListener('message', (event) => {
     const msg = JSON.parse(event.data)
+    if (msg.t === 'ping') return socket.send(JSON.stringify({ t: 'pong' }))
     if (msg.t === 'welcome') {
       me = msg.you
       palette = msg.palette
+      if (pending) {
+        session = pending
+        pending = null
+      }
+      clearTimeout(retryTimer)
       $('room-code-value').textContent = msg.code
       showError('')
       show(room)
@@ -65,10 +81,15 @@ function connect() {
       syncChrome()
     } else if (msg.t === 'error') {
       if (me) toast(msg.message)
-      else showError(msg.message)
+      else {
+        pending = null /* a rejected create/join must not be retried on reconnect */
+        session = null
+        showError(msg.message)
+      }
     }
   })
-  ws.addEventListener('close', () => {
+  socket.addEventListener('close', () => {
+    if (ws !== socket) return /* an old socket closing must not disturb a newer one */
     ws = null
     me = null
     cards = []
@@ -82,8 +103,19 @@ function connect() {
     closePicker()
     closeZoom()
     show(login)
+    if (session) return reconnect()
     showError('Disconnected from the server.')
   })
+}
+
+/* Reopen the socket and re-send the create/join that got us into the room. */
+function reconnect() {
+  const delay = Math.min(8000, 1000 * 2 ** attempts++)
+  showError('Reconnecting…')
+  clearTimeout(retryTimer)
+  retryTimer = setTimeout(() => {
+    if (session) connect(() => ws.send(JSON.stringify(session)))
+  }, delay)
 }
 
 /* Cards sit on the table in front of their player's seat (24% radius vs the seat's 42%). */
@@ -519,6 +551,7 @@ function send(payload) {
   if (!username) return showError('Username is required.')
   if (!ws || ws.readyState !== WebSocket.OPEN) return showError('Not connected.')
   showError('')
+  if (payload.t === 'create' || payload.t === 'join') pending = { ...payload, username }
   ws.send(JSON.stringify({ ...payload, username }))
 }
 
@@ -533,7 +566,12 @@ $('copy').addEventListener('click', () => {
   setTimeout(() => ($('copy').textContent = 'Copy'), 1200)
 })
 
-$('leave').addEventListener('click', () => ws?.close())
+$('leave').addEventListener('click', () => {
+  session = null
+  pending = null
+  clearTimeout(retryTimer)
+  ws?.close()
+})
 
 $('clear').addEventListener('click', () => {
   ws.send(JSON.stringify({ t: 'clearCards' }))

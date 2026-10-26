@@ -188,6 +188,13 @@ server.on('error', onListenError)
 const wss = new WebSocketServer({ server, path: '/ws' })
 wss.on('error', onListenError)
 
+/* Render's front proxy closes WebSockets after ~100s without traffic.
+   A beat every 25s keeps the connection (and the room) alive. */
+setInterval(() => {
+  const beat = JSON.stringify({ t: 'ping' })
+  for (const client of wss.clients) if (client.readyState === 1) client.send(beat)
+}, 25_000)
+
 wss.on('connection', (ws) => {
   ws.on('message', (raw) => {
     let msg
@@ -197,6 +204,7 @@ wss.on('connection', (ws) => {
       return fail(ws, 'Invalid message.')
     }
 
+    if (msg?.t === 'pong') return
     if (msg?.t === 'addCard') return ws.room ? addCard(ws, msg) : fail(ws, 'Join a room first.')
     if (msg?.t === 'removeCard') return ws.room ? removeCard(ws, msg) : fail(ws, 'Join a room first.')
     if (msg?.t === 'clearCards') return ws.room ? clearCards(ws) : fail(ws, 'Join a room first.')
