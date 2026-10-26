@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: guess-who
+    runtime: node
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: 24
