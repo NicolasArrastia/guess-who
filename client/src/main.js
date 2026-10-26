@@ -19,6 +19,7 @@ let pending = null
 let session = null
 let attempts = 0
 let retryTimer = null
+let leftByUser = false
 let players = []
 let cards = []
 let palette = { avatars: [], colors: [] }
@@ -28,7 +29,15 @@ let flipped = new Set()
 let seated = new Set()
 let dealt = new Set()
 
-const url = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`
+/* Same-origin by default: that is what the Render deployment (server + client together)
+   and `npm run dev` use. When the client is hosted somewhere else — e.g. Vercel — set
+   VITE_SERVER_URL to the game server and it connects there instead. */
+const server = import.meta.env.VITE_SERVER_URL || location.origin
+const url = (() => {
+  const target = new URL('/ws', server)
+  target.protocol = target.protocol === 'https:' ? 'wss:' : 'ws:'
+  return target.href
+})()
 
 function show(node) {
   login.hidden = node !== login
@@ -103,18 +112,21 @@ function connect(resume) {
     closePicker()
     closeZoom()
     show(login)
-    if (session) return reconnect()
-    showError('Disconnected from the server.')
+    if (session) return reconnect('Reconnecting…')
+    /* not in a room and not a deliberate leave: keep trying (Render cold starts sleep) */
+    if (!leftByUser) return reconnect('Connecting…')
+    showError('')
   })
 }
 
-/* Reopen the socket and re-send the create/join that got us into the room. */
-function reconnect() {
+/* Reopen the socket (and re-send the create/join that got us into the room, if any). */
+function reconnect(message) {
   const delay = Math.min(8000, 1000 * 2 ** attempts++)
-  showError('Reconnecting…')
+  showError(message)
   clearTimeout(retryTimer)
   retryTimer = setTimeout(() => {
     if (session) connect(() => ws.send(JSON.stringify(session)))
+    else if (!leftByUser) connect()
   }, delay)
 }
 
@@ -551,7 +563,10 @@ function send(payload) {
   if (!username) return showError('Username is required.')
   if (!ws || ws.readyState !== WebSocket.OPEN) return showError('Not connected.')
   showError('')
-  if (payload.t === 'create' || payload.t === 'join') pending = { ...payload, username }
+  if (payload.t === 'create' || payload.t === 'join') {
+    pending = { ...payload, username }
+    leftByUser = false
+  }
   ws.send(JSON.stringify({ ...payload, username }))
 }
 
@@ -567,6 +582,7 @@ $('copy').addEventListener('click', () => {
 })
 
 $('leave').addEventListener('click', () => {
+  leftByUser = true
   session = null
   pending = null
   clearTimeout(retryTimer)
