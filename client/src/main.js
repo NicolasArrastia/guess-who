@@ -840,7 +840,8 @@ function closeMenu() {
 
 $('menu-btn').addEventListener('click', (event) => {
   event.stopPropagation()
-  menu.hidden ? closeMenu() : openMenu()
+  if (menu.hidden) openMenu()
+  else closeMenu()
 })
 
 document.addEventListener('click', (event) => {
