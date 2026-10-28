@@ -9,15 +9,19 @@
   <body>
     <main id="app">
       <section id="login" class="screen">
+        <button id="lang" class="lang-btn" type="button" data-i18n-title="lang.switch" data-i18n-label="lang.switch">
+          <span class="flag" data-flag></span>
+          <span class="lang-name">English</span>
+        </button>
         <div class="card-fan" aria-hidden="true"><span>🂡</span><span>🂠</span><span>🂮</span></div>
         <h1>Guess Who</h1>
-        <p class="sub">Jump into a room and gather around the table.</p>
-        <input id="username" maxlength="20" placeholder="Username" autocomplete="off" autofocus />
-        <button id="create" class="primary">Create room</button>
-        <div class="divider">or</div>
+        <p class="sub" data-i18n="login.sub">Jump into a room and gather around the table.</p>
+        <input id="username" maxlength="20" data-i18n-ph="login.username" placeholder="Username" autocomplete="off" autofocus />
+        <button id="create" class="primary" data-i18n="login.create">Create room</button>
+        <div class="divider" data-i18n="login.or">or</div>
         <div class="join">
           <input id="code" maxlength="4" placeholder="CODE" autocomplete="off" spellcheck="false" />
-          <button id="join">Join</button>
+          <button id="join" data-i18n="login.join">Join</button>
         </div>
         <p id="error" class="error" hidden></p>
       </section>
@@ -25,12 +29,48 @@
       <section id="room" class="screen" hidden>
         <header>
           <div class="room-code">
-            Room <strong id="room-code-value">----</strong>
-            <button id="copy" title="Copy code">Copy</button>
+            <span data-i18n="room.label">Room</span> <strong id="room-code-value">----</strong>
+            <button id="copy" data-i18n="room.copy" data-i18n-title="room.copyTitle" title="Copy code">Copy</button>
           </div>
           <div class="header-actions">
-            <button id="clear" class="ghost danger" hidden>Clear all cards</button>
-            <button id="leave" class="ghost">Leave</button>
+            <button id="clear" class="ghost danger" data-i18n="room.clear" hidden>Clear all cards</button>
+            <div class="menu-wrap">
+              <button
+                id="menu-btn"
+                class="ghost menu-btn"
+                type="button"
+                aria-haspopup="menu"
+                aria-expanded="false"
+                data-i18n-title="menu.title"
+                data-i18n-label="menu.title"
+                title="Menu"
+              >
+                ☰
+              </button>
+              <div id="menu" class="menu" role="menu" hidden>
+                <p class="menu-label" data-i18n="menu.mode">Game mode</p>
+                <button class="menu-item mode-option" type="button" role="menuitemradio" data-mode="guess">
+                  <span class="tick">✓</span><span data-i18n="mode.guess">Who am I</span>
+                </button>
+                <button class="menu-item mode-option" type="button" role="menuitemradio" data-mode="impostor">
+                  <span class="tick">✓</span><span data-i18n="mode.impostor">Impostor</span>
+                </button>
+                <button class="menu-item mode-option" type="button" role="menuitemradio" data-mode="spy">
+                  <span class="tick">✓</span><span data-i18n="mode.spy">Spy</span>
+                </button>
+                <div class="menu-sep"></div>
+                <button id="menu-lang" class="menu-item" type="button" role="menuitem">
+                  <span class="menu-ico flag" data-flag></span>
+                  <span class="lang-name">English</span>
+                  <span class="menu-hint" aria-hidden="true">⇄</span>
+                </button>
+                <div class="menu-sep"></div>
+                <button id="leave" class="menu-item danger" type="button" role="menuitem">
+                  <span class="menu-ico" aria-hidden="true">🚪</span>
+                  <span data-i18n="menu.leave">Leave</span>
+                </button>
+              </div>
+            </div>
           </div>
         </header>
 
@@ -41,29 +81,33 @@
         </div>
 
         <footer>
-          <p id="status">Waiting for players…</p>
-          <p class="hint-line">Click a player to give them a card · tap Watch to see yours · click any card to zoom</p>
+          <p id="status" data-i18n="status.waiting">Waiting for players…</p>
+          <p id="hint" class="hint-line" data-i18n="hint.guess">
+            Click a player to give them a card · tap Watch to see yours · click any card to zoom
+          </p>
         </footer>
       </section>
     </main>
 
     <div id="composer" class="overlay" hidden>
       <div class="sheet">
-        <h3>Assign a card to <span id="composer-name"></span></h3>
-        <p class="sheet-hint">Everyone sees it face up — they see it face down until they tap Watch. Replaces any card they already hold.</p>
-        <textarea id="card-text" maxlength="200" rows="3" placeholder="Write something secret…"></textarea>
+        <h3><span data-i18n="card.titlePrefix">Assign a card to</span> <span id="composer-name"></span></h3>
+        <p class="sheet-hint" data-i18n="card.hint">
+          Everyone sees it face up — they see it face down until they tap Watch. Replaces any card they already hold.
+        </p>
+        <textarea id="card-text" maxlength="200" rows="3" data-i18n-ph="card.placeholder" placeholder="Write something secret…"></textarea>
         <div id="drop" class="drop">
           <img id="preview" alt="" hidden />
           <div id="drop-hint">
-            Drop an image here<br />
-            <button id="pick" class="ghost" type="button">or browse</button>
+            <span data-i18n="card.drop">Drop an image here</span><br />
+            <button id="pick" class="ghost" type="button" data-i18n="card.browse">or browse</button>
           </div>
-          <button id="clear-image" class="ghost remove" type="button" hidden>Remove image</button>
+          <button id="clear-image" class="ghost remove" type="button" data-i18n="card.removeImage" hidden>Remove image</button>
         </div>
         <input id="file" type="file" accept="image/*" hidden />
         <div class="row">
-          <button id="cancel" class="ghost" type="button">Cancel</button>
-          <button id="send" class="primary" type="button">Assign card</button>
+          <button id="cancel" class="ghost" type="button" data-i18n="card.cancel">Cancel</button>
+          <button id="send" class="primary" type="button" data-i18n="card.send">Assign card</button>
         </div>
       </div>
     </div>
@@ -73,8 +117,18 @@
         <img id="zoom-img" alt="" hidden />
         <p id="zoom-text" hidden></p>
         <figcaption id="zoom-caption"></figcaption>
-        <button id="zoom-close" class="ghost" type="button">✕ Close</button>
+        <button id="zoom-close" class="ghost" type="button" data-i18n="zoom.close">✕ Close</button>
       </figure>
+    </div>
+
+    <div id="result" class="overlay" hidden>
+      <div class="sheet result-sheet">
+        <h3 id="result-title"></h3>
+        <p id="result-body"></p>
+        <div class="row">
+          <button id="result-close" class="primary" type="button" data-i18n="result.close">Close</button>
+        </div>
+      </div>
     </div>
 
     <div id="toast" class="toast" hidden></div>
