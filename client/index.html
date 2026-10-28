@@ -58,6 +58,10 @@
                 <button class="menu-item mode-option" type="button" role="menuitemradio" data-mode="spy">
                   <span class="tick">✓</span><span data-i18n="mode.spy">Spy</span>
                 </button>
+                <button id="edit-list" class="menu-item edit-entry" type="button" role="menuitem" hidden>
+                  <span class="menu-ico" aria-hidden="true">✏️</span>
+                  <span id="edit-list-label"></span>
+                </button>
                 <div class="menu-sep"></div>
                 <button id="menu-lang" class="menu-item" type="button" role="menuitem">
                   <span class="menu-ico flag" data-flag></span>
@@ -119,6 +123,22 @@
         <figcaption id="zoom-caption"></figcaption>
         <button id="zoom-close" class="ghost" type="button" data-i18n="zoom.close">✕ Close</button>
       </figure>
+    </div>
+
+    <div id="editor" class="overlay" hidden>
+      <div class="sheet editor-sheet">
+        <h3 id="editor-title"></h3>
+        <p id="editor-hint" class="sheet-hint"></p>
+        <div id="editor-list" class="editor-list"></div>
+        <div class="editor-add">
+          <input id="editor-en" maxlength="40" autocomplete="off" data-i18n-ph="editor.phEn" placeholder="Word in English" />
+          <input id="editor-es" maxlength="40" autocomplete="off" data-i18n-ph="editor.phEs" placeholder="Word in Spanish" />
+          <button id="editor-add" class="primary" type="button" data-i18n="editor.add">Add</button>
+        </div>
+        <div class="row">
+          <button id="editor-done" class="ghost" type="button" data-i18n="editor.done">Done</button>
+        </div>
+      </div>
     </div>
 
     <div id="result" class="overlay" hidden>

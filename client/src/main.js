@@ -37,6 +37,8 @@ const STRINGS = {
     'menu.mode': 'Game mode',
     'menu.leave': 'Leave',
     'menu.hostOnly': 'Only the host can change the game mode.',
+    'menu.editWords': 'Edit word list',
+    'menu.editPlaces': 'Edit location list',
     'mode.guess': 'Who am I',
     'mode.impostor': 'Impostor',
     'mode.spy': 'Spy',
@@ -108,6 +110,17 @@ const STRINGS = {
     'result.forfeit.spy': 'The round ended — the spy was not caught. {name} was the spy!',
     'result.left.impostor': 'The impostor left the game — honest players win!',
     'result.left.spy': 'The spy left the game — everyone else wins!',
+    'editor.wordsTitle': 'Edit the word list',
+    'editor.placesTitle': 'Edit the location list',
+    'editor.hint':
+      'The secret every honest player gets at the start of a round. Type it in English and Spanish — leave the Spanish field empty to reuse the English word.',
+    'editor.phEn': 'Word in English',
+    'editor.phEs': 'Word in Spanish',
+    'editor.add': 'Add',
+    'editor.done': 'Done',
+    'editor.remove': 'Remove this entry',
+    'editor.loading': 'Loading…',
+    'editor.needWord': 'Type a word first.',
     'err.username': 'Username is required.',
     'err.notConnected': 'Not connected.',
     'err.invalid': 'Invalid message.',
@@ -131,6 +144,12 @@ const STRINGS = {
     'err.roundNone': 'No round in progress.',
     'err.roundStarted': 'The round already started — wait for the next one.',
     'err.voteTarget': 'Vote for another player.',
+    'err.hostLists': 'Only the host can edit the lists.',
+    'err.listKind': 'Unknown list.',
+    'err.listEmpty': 'The list needs at least one entry.',
+    'err.listTooBig': 'The list is too long (max 100 entries).',
+    'err.listEntry': 'Each entry needs a word.',
+    'err.roundPool': 'Add at least one word or location first.',
   },
   es: {
     'lang.switch': 'Cambiar idioma',
@@ -148,6 +167,8 @@ const STRINGS = {
     'menu.mode': 'Modo de juego',
     'menu.leave': 'Salir',
     'menu.hostOnly': 'Solo el anfitrión puede cambiar el modo de juego.',
+    'menu.editWords': 'Editar lista de palabras',
+    'menu.editPlaces': 'Editar lista de lugares',
     'mode.guess': 'Quién soy',
     'mode.impostor': 'Impostor',
     'mode.spy': 'Espía',
@@ -219,6 +240,17 @@ const STRINGS = {
     'result.forfeit.spy': 'La ronda terminó — no atraparon al espía. ¡{name} era el espía!',
     'result.left.impostor': 'El impostor salió del juego — ¡ganan los jugadores honestos!',
     'result.left.spy': 'El espía salió del juego — ¡ganan los demás!',
+    'editor.wordsTitle': 'Editar la lista de palabras',
+    'editor.placesTitle': 'Editar la lista de lugares',
+    'editor.hint':
+      'El secreto que recibe cada jugador honesto al empezar una ronda. Escríbelo en inglés y en español — deja vacío el campo en español para repetir la palabra inglesa.',
+    'editor.phEn': 'Palabra en inglés',
+    'editor.phEs': 'Palabra en español',
+    'editor.add': 'Agregar',
+    'editor.done': 'Listo',
+    'editor.remove': 'Quitar esta entrada',
+    'editor.loading': 'Cargando…',
+    'editor.needWord': 'Escribe una palabra primero.',
     'err.username': 'Se requiere un usuario.',
     'err.notConnected': 'Sin conexión.',
     'err.invalid': 'Mensaje no válido.',
@@ -242,6 +274,12 @@ const STRINGS = {
     'err.roundNone': 'No hay ninguna ronda en curso.',
     'err.roundStarted': 'La ronda ya empezó — espera a la siguiente.',
     'err.voteTarget': 'Vota por otro jugador.',
+    'err.hostLists': 'Solo el anfitrión puede editar las listas.',
+    'err.listKind': 'Lista desconocida.',
+    'err.listEmpty': 'La lista necesita al menos una entrada.',
+    'err.listTooBig': 'La lista es demasiado larga (máx. 100 entradas).',
+    'err.listEntry': 'Cada entrada necesita una palabra.',
+    'err.roundPool': 'Agrega al menos una palabra o lugar primero.',
   },
 }
 
@@ -296,6 +334,7 @@ function refreshText() {
   }
   if (zoomCard && !$('zoom').hidden) paintZoom()
   if (lastResult && !$('result').hidden) paintResult(lastResult)
+  if (!$('editor').hidden) paintEditor()
 }
 
 function setLang(next) {
@@ -424,6 +463,10 @@ function connect(resume) {
     } else if (msg.t === 'role') {
       myRole = msg
       renderSeats()
+    } else if (msg.t === 'lists') {
+      listKind = msg.kind
+      listItems = msg.items
+      if (!$('editor').hidden) renderList()
     } else if (msg.t === 'error') {
       if (me) toast(serverText(msg))
       else {
@@ -779,6 +822,9 @@ function syncChrome() {
     option.disabled = !me?.admin
     option.title = me?.admin ? '' : t('menu.hostOnly')
   }
+  const editable = Boolean(me?.admin && (mode === 'impostor' || mode === 'spy'))
+  $('edit-list').hidden = !editable
+  if (editable) $('edit-list-label').textContent = t(mode === 'impostor' ? 'menu.editWords' : 'menu.editPlaces')
   hint.textContent = t(mode === 'guess' ? 'hint.guess' : 'hint.round')
 }
 
@@ -859,6 +905,95 @@ for (const option of document.querySelectorAll('.mode-option')) {
 const toggleLang = () => setLang(lang === 'en' ? 'es' : 'en')
 $('menu-lang').addEventListener('click', toggleLang)
 $('lang').addEventListener('click', toggleLang)
+
+/* ——— host list editor (Impostor words / Spy locations) ——— */
+
+let listKind = null
+let listItems = []
+
+function openEditor() {
+  closeMenu()
+  listKind = mode === 'impostor' ? 'words' : mode === 'spy' ? 'places' : null
+  if (!listKind) return
+  listItems = []
+  $('editor-en').value = ''
+  $('editor-es').value = ''
+  paintEditor()
+  $('editor').hidden = false
+  ws?.send(JSON.stringify({ t: 'getLists', kind: listKind }))
+  $('editor-en').focus()
+}
+
+function closeEditor() {
+  $('editor').hidden = true
+}
+
+function paintEditor() {
+  if (listKind !== 'words' && listKind !== 'places') return
+  $('editor-title').textContent = t(listKind === 'words' ? 'editor.wordsTitle' : 'editor.placesTitle')
+  $('editor-hint').textContent = t('editor.hint')
+  renderList()
+}
+
+function renderList() {
+  const box = $('editor-list')
+  box.replaceChildren()
+  if (listItems.length === 0) {
+    const note = document.createElement('p')
+    note.className = 'editor-empty'
+    note.textContent = t('editor.loading')
+    box.append(note)
+    return
+  }
+  listItems.forEach((item, index) => {
+    const row = document.createElement('div')
+    row.className = 'editor-row'
+    const pair = document.createElement('span')
+    pair.className = 'editor-pair'
+    const primary = document.createElement('strong')
+    primary.textContent = item[lang] || item.en
+    pair.append(primary)
+    const other = lang === 'es' ? item.en : item.es
+    if (other && other !== primary.textContent) {
+      const secondary = document.createElement('span')
+      secondary.textContent = ` · ${other}`
+      pair.append(secondary)
+    }
+    const remove = document.createElement('button')
+    remove.className = 'editor-x'
+    remove.type = 'button'
+    remove.textContent = '✕'
+    remove.title = t('editor.remove')
+    remove.disabled = listItems.length <= 1 /* a list always keeps at least one entry */
+    remove.addEventListener('click', () => sendLists(listItems.filter((_, i) => i !== index)))
+    row.append(pair, remove)
+    box.append(row)
+  })
+}
+
+function sendLists(items) {
+  ws?.send(JSON.stringify({ t: 'setLists', kind: listKind, items }))
+}
+
+function editorAdd() {
+  if (listItems.length === 0) return /* still loading — never overwrite a list we haven't seen */
+  const en = $('editor-en').value.trim()
+  if (!en) return toast('editor.needWord')
+  const es = $('editor-es').value.trim() || en
+  $('editor-en').value = ''
+  $('editor-es').value = ''
+  sendLists([...listItems, { en, es }])
+  $('editor-en').focus()
+}
+
+$('edit-list').addEventListener('click', openEditor)
+$('editor-done').addEventListener('click', closeEditor)
+$('editor').addEventListener('click', (event) => {
+  if (event.target === $('editor')) closeEditor()
+})
+$('editor-add').addEventListener('click', editorAdd)
+$('editor-en').addEventListener('keydown', (event) => event.key === 'Enter' && editorAdd())
+$('editor-es').addEventListener('keydown', (event) => event.key === 'Enter' && editorAdd())
 
 /* avatar picker */
 
@@ -1147,6 +1282,7 @@ document.addEventListener('keydown', (event) => {
   closeZoom()
   closeMenu()
   closeResult()
+  closeEditor()
 })
 
 for (const type of ['dragover', 'drop']) {

@@ -25,6 +25,9 @@ const GRADIENTS = [
 
 const MODES = ['guess', 'impostor', 'spy']
 const MIN_ROUND_PLAYERS = 3
+const LIST_KINDS = ['words', 'places']
+const LIST_MAX_ENTRIES = 100
+const LIST_MAX_CHARS = 40
 
 /* Shared secrets for the impostor / spy rounds: shown to the honest players in
    their own UI language (the secret is private screen info, never broadcast). */
@@ -69,6 +72,10 @@ const PLACES = [
 ]
 
 const rooms = new Map()
+
+/* Each room carries its own editable copy of the two pools. */
+const listPool = (room, kind) => (kind === 'words' ? room.words : room.places)
+const copyList = (items) => items.map((entry) => ({ ...entry }))
 
 const sanitize = (value, max) =>
   String(value ?? '')
@@ -237,6 +244,36 @@ function setMode(ws, msg) {
   broadcast(room)
 }
 
+/* Room-local pools for Impostor (words) / Spy (locations). Host-only. */
+function getLists(ws, msg) {
+  const kind = String(msg?.kind ?? '')
+  if (!LIST_KINDS.includes(kind)) return fail(ws, 'Unknown list.', 'listKind')
+  if (ws.room.adminId !== ws.player.id) return fail(ws, 'Only the host can edit the lists.', 'hostLists')
+  ws.send(JSON.stringify({ t: 'lists', kind, items: listPool(ws.room, kind) }))
+}
+
+function setLists(ws, msg) {
+  const kind = String(msg?.kind ?? '')
+  if (!LIST_KINDS.includes(kind)) return fail(ws, 'Unknown list.', 'listKind')
+  if (ws.room.adminId !== ws.player.id) return fail(ws, 'Only the host can edit the lists.', 'hostLists')
+  if (!Array.isArray(msg?.items)) return fail(ws, 'Invalid message.', 'invalid')
+  const incoming = msg.items.slice(0, LIST_MAX_ENTRIES + 1)
+  if (incoming.length < 1) return fail(ws, 'The list needs at least one entry.', 'listEmpty')
+  if (incoming.length > LIST_MAX_ENTRIES) {
+    return fail(ws, `The list is too long (max ${LIST_MAX_ENTRIES} entries).`, 'listTooBig')
+  }
+  const items = []
+  for (const entry of incoming) {
+    const en = sanitize(entry?.en, LIST_MAX_CHARS)
+    if (!en) return fail(ws, 'Each entry needs a word.', 'listEntry')
+    const es = sanitize(entry?.es, LIST_MAX_CHARS) || en
+    items.push({ en, es })
+  }
+  if (kind === 'words') ws.room.words = items
+  else ws.room.places = items
+  ws.send(JSON.stringify({ t: 'lists', kind, items }))
+}
+
 function startRound(ws) {
   const room = ws.room
   if (room.adminId !== ws.player.id) return fail(ws, 'Only the host can start a round.', 'hostStart')
@@ -245,7 +282,8 @@ function startRound(ws) {
   if (room.players.size < MIN_ROUND_PLAYERS) {
     return fail(ws, `You need at least ${MIN_ROUND_PLAYERS} players to start.`, 'roundPlayers')
   }
-  const pool = room.mode === 'impostor' ? WORDS : PLACES
+  const pool = listPool(room, room.mode === 'impostor' ? 'words' : 'places')
+  if (pool.length === 0) return fail(ws, 'Add at least one word or location first.', 'roundPool')
   const secret = pool[Math.floor(Math.random() * pool.length)]
   const ids = [...room.players.keys()]
   room.round = {
@@ -391,13 +429,23 @@ wss.on('connection', (ws) => {
     if (msg?.t === 'startRound') return ws.room ? startRound(ws) : fail(ws, 'Join a room first.', 'joinFirst')
     if (msg?.t === 'endRound') return ws.room ? endRound(ws) : fail(ws, 'Join a room first.', 'joinFirst')
     if (msg?.t === 'vote') return ws.room ? castVote(ws, msg) : fail(ws, 'Join a room first.', 'joinFirst')
+    if (msg?.t === 'getLists') return ws.room ? getLists(ws, msg) : fail(ws, 'Join a room first.', 'joinFirst')
+    if (msg?.t === 'setLists') return ws.room ? setLists(ws, msg) : fail(ws, 'Join a room first.', 'joinFirst')
 
     const username = sanitize(msg?.username, 20)
     if (!username) return fail(ws, 'Username is required.', 'username')
     if (ws.room) return fail(ws, 'Already in a room.', 'alreadyIn')
 
     if (msg?.t === 'create') {
-      const room = { code: makeCode(), players: new Map(), cards: [], mode: 'guess', round: null }
+      const room = {
+        code: makeCode(),
+        players: new Map(),
+        cards: [],
+        mode: 'guess',
+        round: null,
+        words: copyList(WORDS),
+        places: copyList(PLACES),
+      }
       rooms.set(room.code, room)
       return join(ws, username, room)
     }

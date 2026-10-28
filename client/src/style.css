@@ -595,6 +595,22 @@ button.danger:hover {
   background: var(--line);
 }
 
+/* divider drawn only while the host-only row is visible */
+.menu-item.edit-entry {
+  position: relative;
+  margin-top: 13px;
+}
+
+.menu-item.edit-entry::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  left: 4px;
+  right: 4px;
+  height: 1px;
+  background: var(--line);
+}
+
 #status {
   margin: 14px 0 6px;
   font-size: 14px;
@@ -1037,6 +1053,86 @@ button.danger:hover {
   margin: 4px 0 14px;
   font-size: 12px;
   color: var(--muted);
+}
+
+/* ——— host list editor (Impostor words / Spy locations) ——— */
+
+.editor-sheet {
+  width: min(460px, 100%);
+}
+
+.editor-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: min(44dvh, 330px);
+  margin: 12px 0;
+  overflow-y: auto;
+}
+
+.editor-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px;
+  background: #191209;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.editor-pair {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 13.5px;
+  color: var(--muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.editor-pair strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.editor-x {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  font-size: 12px;
+}
+
+.editor-x:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.editor-empty {
+  margin: 0;
+  padding: 14px 10px;
+  font-size: 13px;
+  color: var(--muted);
+  text-align: center;
+  background: #191209;
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+}
+
+.editor-add {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.editor-add input {
+  padding: 10px 12px;
+  font-size: 14px;
+}
+
+.editor-add .primary {
+  margin-top: 0;
+  padding: 10px 16px;
 }
 
 /* ——— round result sheet ——— */
