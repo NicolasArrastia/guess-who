@@ -26,56 +26,57 @@ const GRADIENTS = [
 const MODES = ['guess', 'impostor', 'spy']
 const MIN_ROUND_PLAYERS = 3
 const LIST_KINDS = ['words', 'places']
-const LIST_MAX_ENTRIES = 100
+const LIST_MAX_ENTRIES = 1000
 const LIST_MAX_CHARS = 40
+const IMPORT_MAX_CHARS = 200_000
+const TURN_SECONDS = [15, 30, 45, 60, 90, 120]
 
-/* Shared secrets for the impostor / spy rounds: shown to the honest players in
-   their own UI language (the secret is private screen info, never broadcast). */
+/* Round secrets for the impostor / spy rounds, shown to the honest players as-is.
+   Entries are plain Spanish strings: the UI language setting never translates them. */
 const WORDS = [
-  { en: 'cat', es: 'gato' }, { en: 'dog', es: 'perro' }, { en: 'elephant', es: 'elefante' },
-  { en: 'tiger', es: 'tigre' }, { en: 'rabbit', es: 'conejo' }, { en: 'dolphin', es: 'delfín' },
-  { en: 'eagle', es: 'águila' }, { en: 'frog', es: 'rana' }, { en: 'horse', es: 'caballo' },
-  { en: 'lion', es: 'león' }, { en: 'monkey', es: 'mono' }, { en: 'owl', es: 'búho' },
-  { en: 'pizza', es: 'pizza' }, { en: 'bread', es: 'pan' }, { en: 'milk', es: 'leche' },
-  { en: 'cheese', es: 'queso' }, { en: 'apple', es: 'manzana' }, { en: 'banana', es: 'plátano' },
-  { en: 'water', es: 'agua' }, { en: 'fire', es: 'fuego' }, { en: 'snow', es: 'nieve' },
-  { en: 'rain', es: 'lluvia' }, { en: 'sun', es: 'sol' }, { en: 'moon', es: 'luna' },
-  { en: 'star', es: 'estrella' }, { en: 'tree', es: 'árbol' }, { en: 'flower', es: 'flor' },
-  { en: 'rock', es: 'roca' }, { en: 'river', es: 'río' }, { en: 'ocean', es: 'océano' },
-  { en: 'island', es: 'isla' }, { en: 'mountain', es: 'montaña' }, { en: 'desert', es: 'desierto' },
-  { en: 'house', es: 'casa' }, { en: 'school', es: 'escuela' }, { en: 'hospital', es: 'hospital' },
-  { en: 'office', es: 'oficina' }, { en: 'library', es: 'biblioteca' }, { en: 'factory', es: 'fábrica' },
-  { en: 'key', es: 'llave' }, { en: 'phone', es: 'teléfono' }, { en: 'book', es: 'libro' },
-  { en: 'chair', es: 'silla' }, { en: 'table', es: 'mesa' }, { en: 'window', es: 'ventana' },
-  { en: 'door', es: 'puerta' }, { en: 'clock', es: 'reloj' }, { en: 'shoe', es: 'zapato' },
-  { en: 'hat', es: 'sombrero' }, { en: 'ball', es: 'pelota' }, { en: 'guitar', es: 'guitarra' },
-  { en: 'camera', es: 'cámara' }, { en: 'computer', es: 'computadora' }, { en: 'money', es: 'dinero' },
-  { en: 'train', es: 'tren' }, { en: 'airplane', es: 'avión' }, { en: 'bicycle', es: 'bicicleta' },
-  { en: 'car', es: 'coche' }, { en: 'boat', es: 'barco' }, { en: 'candle', es: 'vela' },
-  { en: 'mirror', es: 'espejo' }, { en: 'pencil', es: 'lápiz' }, { en: 'umbrella', es: 'paraguas' },
+  'gato', 'perro', 'elefante', 'tigre', 'conejo', 'delfín', 'águila', 'rana', 'caballo', 'león',
+  'mono', 'búho', 'oso', 'zorro', 'ratón', 'jirafa', 'serpiente', 'tiburón', 'pingüino', 'koala',
+  'mariposa', 'abeja', 'tortuga', 'araña', 'ciervo', 'dinosaurio', 'dragón', 'unicornio',
+  'pizza', 'pan', 'leche', 'queso', 'manzana', 'plátano', 'fresa', 'uva', 'sandía', 'tomate',
+  'huevo', 'arroz', 'pollo', 'pescado', 'hamburguesa', 'helado', 'chocolate', 'café', 'jugo',
+  'agua', 'fuego', 'nieve', 'lluvia', 'sol', 'luna', 'estrella', 'nube', 'hielo', 'arena',
+  'volcán', 'cascada', 'árbol', 'flor', 'roca', 'río', 'océano', 'isla', 'montaña', 'desierto',
+  'casa', 'escuela', 'hospital', 'oficina', 'biblioteca', 'fábrica', 'mochila', 'cuchara', 'tenedor', 'cuchillo',
+  'plato', 'vaso', 'botella', 'llave', 'teléfono', 'libro', 'silla', 'mesa', 'ventana', 'puerta',
+  'reloj', 'zapato', 'sombrero', 'pelota', 'guitarra', 'cámara', 'computadora', 'dinero', 'tren', 'avión',
+  'bicicleta', 'coche', 'barco', 'vela', 'espejo', 'lápiz', 'paraguas', 'globo', 'cohete', 'cactus',
+  'faro', 'puente', 'torre', 'música', 'película', 'regalo', 'fiesta', 'juguete', 'bruja', 'mago',
+  'mano', 'cabeza', 'corazón', 'oreja', 'nariz', 'boca',
 ]
 
 const PLACES = [
-  { en: 'beach', es: 'playa' }, { en: 'airport', es: 'aeropuerto' }, { en: 'hospital', es: 'hospital' },
-  { en: 'school', es: 'escuela' }, { en: 'restaurant', es: 'restaurante' }, { en: 'supermarket', es: 'supermercado' },
-  { en: 'cinema', es: 'cine' }, { en: 'library', es: 'biblioteca' }, { en: 'park', es: 'parque' },
-  { en: 'zoo', es: 'zoológico' }, { en: 'museum', es: 'museo' }, { en: 'hotel', es: 'hotel' },
-  { en: 'bank', es: 'banco' }, { en: 'farm', es: 'granja' }, { en: 'campsite', es: 'camping' },
-  { en: 'mountain', es: 'montaña' }, { en: 'island', es: 'isla' }, { en: 'ship', es: 'barco' },
-  { en: 'train station', es: 'estación de tren' }, { en: 'stadium', es: 'estadio' }, { en: 'circus', es: 'circo' },
-  { en: 'amusement park', es: 'parque de atracciones' }, { en: 'space station', es: 'estación espacial' },
-  { en: 'submarine', es: 'submarino' }, { en: 'desert', es: 'desierto' }, { en: 'forest', es: 'bosque' },
-  { en: 'city', es: 'ciudad' }, { en: 'police station', es: 'comisaría' }, { en: 'church', es: 'iglesia' },
-  { en: 'wedding', es: 'boda' }, { en: 'concert', es: 'concierto' }, { en: 'haunted house', es: 'casa embrujada' },
-  { en: 'arctic', es: 'ártico' }, { en: 'jungle', es: 'selva' }, { en: 'castle', es: 'castillo' },
-  { en: 'theater', es: 'teatro' }, { en: 'casino', es: 'casino' }, { en: 'barber shop', es: 'peluquería' },
+  'playa', 'aeropuerto', 'hospital', 'escuela', 'restaurante', 'supermercado', 'cine', 'biblioteca', 'parque', 'zoológico',
+  'museo', 'hotel', 'banco', 'granja', 'camping', 'montaña', 'isla', 'estación de tren', 'estadio', 'circo',
+  'parque de atracciones', 'estación espacial', 'submarino', 'desierto', 'bosque', 'ciudad', 'comisaría', 'iglesia', 'boda', 'concierto',
+  'casa embrujada', 'ártico', 'jungla', 'castillo', 'teatro', 'casino', 'peluquería', 'puerto', 'mercado', 'panadería',
+  'laboratorio', 'observatorio', 'cementerio', 'catedral', 'embajada', 'ayuntamiento', 'túnel', 'costa', 'piscina', 'gimnasio',
+  'discoteca', 'cueva', 'taberna', 'granero', 'huerto', 'duna', 'refugio de montaña', 'base lunar', 'tobogán', 'mercadillo',
 ]
 
 const rooms = new Map()
 
 /* Each room carries its own editable copy of the two pools. */
 const listPool = (room, kind) => (kind === 'words' ? room.words : room.places)
-const copyList = (items) => items.map((entry) => ({ ...entry }))
+const copyList = (items) => [...items]
+
+/* Keep order, drop case-insensitive repeats. */
+function dedupe(items) {
+  const seen = new Set()
+  return items.filter((item) => {
+    const key = item.toLocaleLowerCase()
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
+/* Host-editable room settings, mirrored to every client through the state broadcast. */
+const defaultSettings = () => ({ turnClock: { enabled: false, seconds: 60 } })
 
 const sanitize = (value, max) =>
   String(value ?? '')
@@ -119,6 +120,9 @@ function snapshot(room) {
 /* Everyone at the table sees every card: the holder gets it face-down client-side. */
 const publicCards = (room) => room.cards.map(publicCard)
 
+/* The turn clock: who holds the floor and when their time runs out. */
+const publicTurn = (room) => ({ ...room.turn })
+
 function broadcast(room) {
   const state = JSON.stringify({
     t: 'state',
@@ -127,11 +131,76 @@ function broadcast(room) {
     round: publicRound(room),
     players: snapshot(room),
     cards: publicCards(room),
+    settings: room.settings,
+    turn: publicTurn(room),
   })
   for (const viewer of room.players.values()) {
     if (viewer.ws.readyState !== 1) continue
     viewer.ws.send(state)
   }
+}
+
+/* ——— turn clock ———
+
+   The clock walks the players in seat (join) order. The server owns the timer:
+   `endsAt` is a wall-clock timestamp every client counts down from, so one
+   ticker advances every screen at the same moment. */
+
+const resetTurn = (room) => {
+  room.turn = { playerId: null, endsAt: null, running: false }
+}
+
+const turnDuration = (room) => room.settings.turnClock.seconds * 1000
+
+/* Move to the next player in seat order, restarting their time. */
+function advanceTurn(room) {
+  const ids = [...room.players.keys()]
+  if (ids.length === 0) return resetTurn(room)
+  const playerId = ids[(ids.indexOf(room.turn.playerId) + 1) % ids.length]
+  room.turn.playerId = playerId
+  room.turn.endsAt = Date.now() + turnDuration(room)
+  room.turn.running = true
+}
+
+/* Host-only clock controls: start / pause / skip. */
+function startClock(ws) {
+  const room = ws.room
+  if (room.adminId !== ws.player.id) return fail(ws, 'Only the host can control the turn clock.', 'hostClock')
+  if (!room.settings.turnClock.enabled) return fail(ws, 'Turn the clock on in room settings first.', 'clockOff')
+  if (room.turn.running) return
+  if (!room.turn.playerId || !room.players.has(room.turn.playerId)) {
+    room.turn.playerId = room.players.keys().next().value ?? null
+  }
+  if (!room.turn.playerId) return
+  room.turn.endsAt = Date.now() + turnDuration(room)
+  room.turn.running = true
+  broadcast(room)
+}
+
+function pauseClock(ws) {
+  const room = ws.room
+  if (room.adminId !== ws.player.id) return fail(ws, 'Only the host can control the turn clock.', 'hostClock')
+  if (!room.turn.running) return
+  room.turn.running = false
+  room.turn.endsAt = null
+  broadcast(room)
+}
+
+function nextClock(ws) {
+  const room = ws.room
+  /* the host runs the clock, but the player holding the floor may pass it on */
+  if (room.adminId !== ws.player.id && room.turn.playerId !== ws.player.id) {
+    return fail(ws, 'Only the host or the player on turn can skip.', 'clockSkip')
+  }
+  if (!room.settings.turnClock.enabled) return fail(ws, 'Turn the clock on in room settings first.', 'clockOff')
+  if (room.players.size === 0) return
+  const wasRunning = room.turn.running
+  advanceTurn(room)
+  if (!wasRunning) {
+    room.turn.running = false
+    room.turn.endsAt = null
+  }
+  broadcast(room)
 }
 
 function join(ws, username, room) {
@@ -162,6 +231,12 @@ function leave(ws) {
   if (room.players.size === 0) return void rooms.delete(room.code)
   /* Map preserves join order, so the next oldest player becomes the new host. */
   if (room.adminId === goneId) room.adminId = room.players.keys().next().value
+
+  /* the clock cannot keep time for a player who is gone */
+  if (room.turn.playerId === goneId) {
+    if (room.turn.running) advanceTurn(room)
+    else resetTurn(room)
+  }
 
   const round = room.round
   if (round) {
@@ -241,6 +316,25 @@ function setMode(ws, msg) {
   room.mode = mode
   room.round = null
   room.cards = [] /* cards belong to the Guess Who game only */
+  resetTurn(room)
+  broadcast(room)
+}
+
+/* Host-only room settings. Unknown fields are ignored, invalid values rejected whole. */
+function setSettings(ws, msg) {
+  const room = ws.room
+  if (room.adminId !== ws.player.id) {
+    return fail(ws, 'Only the host can change the room settings.', 'hostSettings')
+  }
+  const turn = msg?.settings?.turnClock
+  if (turn === undefined) return
+  if (typeof turn !== 'object' || turn === null) return fail(ws, 'Invalid settings.', 'settingsInvalid')
+  const seconds = Number(turn.seconds)
+  if (!TURN_SECONDS.includes(seconds)) return fail(ws, 'Unknown turn length.', 'settingsSeconds')
+  const next = { enabled: Boolean(turn.enabled), seconds }
+  const changed = next.enabled !== room.settings.turnClock.enabled || next.seconds !== room.settings.turnClock.seconds
+  room.settings.turnClock = next
+  if (changed) resetTurn(room) /* a settings change restarts the clock from scratch */
   broadcast(room)
 }
 
@@ -264,14 +358,39 @@ function setLists(ws, msg) {
   }
   const items = []
   for (const entry of incoming) {
-    const en = sanitize(entry?.en, LIST_MAX_CHARS)
-    if (!en) return fail(ws, 'Each entry needs a word.', 'listEntry')
-    const es = sanitize(entry?.es, LIST_MAX_CHARS) || en
-    items.push({ en, es })
+    const item = sanitize(entry, LIST_MAX_CHARS)
+    if (!item) return fail(ws, 'Each entry needs a word.', 'listEntry')
+    items.push(item)
   }
-  if (kind === 'words') ws.room.words = items
-  else ws.room.places = items
-  ws.send(JSON.stringify({ t: 'lists', kind, items }))
+  const unique = dedupe(items)
+  if (kind === 'words') ws.room.words = unique
+  else ws.room.places = unique
+  ws.send(JSON.stringify({ t: 'lists', kind, items: unique }))
+}
+
+/* Bulk add from a .txt: one entry per line, blank lines and #comments skipped.
+   The reply carries the full refreshed list plus how many entries were new. */
+function importList(ws, msg) {
+  const room = ws.room
+  const kind = String(msg?.kind ?? '')
+  if (!LIST_KINDS.includes(kind)) return fail(ws, 'Unknown list.', 'listKind')
+  if (room.adminId !== ws.player.id) return fail(ws, 'Only the host can edit the lists.', 'hostLists')
+  const text = String(msg?.text ?? '').replace(/^\uFEFF/, '')
+  if (text.length > IMPORT_MAX_CHARS) return fail(ws, 'That file is too large.', 'importTooBig')
+  const pool = listPool(room, kind)
+  const seen = new Set(pool.map((item) => item.toLocaleLowerCase()))
+  let added = 0
+  for (const line of text.split(/\r?\n/)) {
+    if (pool.length >= LIST_MAX_ENTRIES) break
+    const entry = sanitize(line, LIST_MAX_CHARS)
+    if (!entry || entry.startsWith('#')) continue
+    const key = entry.toLocaleLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    pool.push(entry)
+    added++
+  }
+  ws.send(JSON.stringify({ t: 'lists', kind, items: pool, added }))
 }
 
 function startRound(ws) {
@@ -411,6 +530,17 @@ setInterval(() => {
   for (const client of wss.clients) if (client.readyState === 1) client.send(beat)
 }, 25_000)
 
+/* One ticker drives every room's turn clock: when the current player's time
+   runs out the turn advances and the fresh state goes out. */
+setInterval(() => {
+  const now = Date.now()
+  for (const room of rooms.values()) {
+    if (!room.turn.running || !room.turn.endsAt || now < room.turn.endsAt) continue
+    advanceTurn(room)
+    broadcast(room)
+  }
+}, 250)
+
 wss.on('connection', (ws) => {
   ws.on('message', (raw) => {
     let msg
@@ -431,6 +561,11 @@ wss.on('connection', (ws) => {
     if (msg?.t === 'vote') return ws.room ? castVote(ws, msg) : fail(ws, 'Join a room first.', 'joinFirst')
     if (msg?.t === 'getLists') return ws.room ? getLists(ws, msg) : fail(ws, 'Join a room first.', 'joinFirst')
     if (msg?.t === 'setLists') return ws.room ? setLists(ws, msg) : fail(ws, 'Join a room first.', 'joinFirst')
+    if (msg?.t === 'importList') return ws.room ? importList(ws, msg) : fail(ws, 'Join a room first.', 'joinFirst')
+    if (msg?.t === 'setSettings') return ws.room ? setSettings(ws, msg) : fail(ws, 'Join a room first.', 'joinFirst')
+    if (msg?.t === 'startTurnClock') return ws.room ? startClock(ws) : fail(ws, 'Join a room first.', 'joinFirst')
+    if (msg?.t === 'pauseTurnClock') return ws.room ? pauseClock(ws) : fail(ws, 'Join a room first.', 'joinFirst')
+    if (msg?.t === 'nextTurn') return ws.room ? nextClock(ws) : fail(ws, 'Join a room first.', 'joinFirst')
 
     const username = sanitize(msg?.username, 20)
     if (!username) return fail(ws, 'Username is required.', 'username')
@@ -445,6 +580,8 @@ wss.on('connection', (ws) => {
         round: null,
         words: copyList(WORDS),
         places: copyList(PLACES),
+        settings: defaultSettings(),
+        turn: { playerId: null, endsAt: null, running: false },
       }
       rooms.set(room.code, room)
       return join(ws, username, room)

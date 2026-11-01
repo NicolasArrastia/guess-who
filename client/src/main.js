@@ -13,6 +13,7 @@ const menu = $('menu')
 
 const MAX_IMAGE_CHARS = 1_500_000
 const MAX_IMAGE_EDGE = 640
+const IMPORT_MAX_CHARS = 200_000
 
 /* ————————————————————————————————————————————
    i18n — the whole UI switches between English and Spanish
@@ -28,6 +29,8 @@ const STRINGS = {
     'login.create': 'Create room',
     'login.or': 'or',
     'login.join': 'Join',
+    'login.rejoin': 'Rejoin {code}',
+    'login.rejoinTitle': 'Join your last room again',
     'room.label': 'Room',
     'room.copy': 'Copy',
     'room.copied': 'Copied',
@@ -39,6 +42,19 @@ const STRINGS = {
     'menu.hostOnly': 'Only the host can change the game mode.',
     'menu.editWords': 'Edit word list',
     'menu.editPlaces': 'Edit location list',
+    'menu.settings': 'Room settings',
+    'settings.title': 'Room settings',
+    'settings.hint': 'Only the host can change these options.',
+    'settings.turnClock': 'Turn clock',
+    'settings.turnClockNote': 'A shared timer that goes around the table, one player at a time.',
+    'settings.turnSeconds': 'Seconds per turn',
+    'settings.saved': 'Room settings saved.',
+    'clock.turnOf': '{name}’s turn',
+    'clock.ready': 'Press start to go around the table',
+    'clock.waitHost': 'Waiting for the host to start the clock',
+    'clock.start': '▶ Start',
+    'clock.pause': '⏸ Pause',
+    'clock.next': '⏭ Next',
     'mode.guess': 'Who am I',
     'mode.impostor': 'Impostor',
     'mode.spy': 'Spy',
@@ -113,10 +129,14 @@ const STRINGS = {
     'editor.wordsTitle': 'Edit the word list',
     'editor.placesTitle': 'Edit the location list',
     'editor.hint':
-      'The secret every honest player gets at the start of a round. Type it in English and Spanish — leave the Spanish field empty to reuse the English word.',
-    'editor.phEn': 'Word in English',
-    'editor.phEs': 'Word in Spanish',
+      'The secret every honest player gets at the start of a round — used exactly as written. Import a .txt (one entry per line) to build a long list.',
+    'editor.ph': 'New word or phrase',
     'editor.add': 'Add',
+    'editor.import': 'Import .txt',
+    'editor.importHint': 'One entry per line',
+    'editor.imported': '{n} entries added.',
+    'editor.importNone': 'No new entries in that file.',
+    'editor.importTooBig': 'That file is too large.',
     'editor.done': 'Done',
     'editor.remove': 'Remove this entry',
     'editor.loading': 'Loading…',
@@ -145,9 +165,16 @@ const STRINGS = {
     'err.roundStarted': 'The round already started — wait for the next one.',
     'err.voteTarget': 'Vote for another player.',
     'err.hostLists': 'Only the host can edit the lists.',
+    'err.hostSettings': 'Only the host can change the room settings.',
+    'err.settingsInvalid': 'Invalid settings.',
+    'err.settingsSeconds': 'Unknown turn length.',
+    'err.hostClock': 'Only the host can control the turn clock.',
+    'err.clockOff': 'Turn the clock on in room settings first.',
+    'err.clockSkip': 'Only the host or the player on turn can skip.',
     'err.listKind': 'Unknown list.',
     'err.listEmpty': 'The list needs at least one entry.',
-    'err.listTooBig': 'The list is too long (max 100 entries).',
+    'err.listTooBig': 'The list is too long (max 1000 entries).',
+    'err.importTooBig': 'That file is too large.',
     'err.listEntry': 'Each entry needs a word.',
     'err.roundPool': 'Add at least one word or location first.',
   },
@@ -158,6 +185,8 @@ const STRINGS = {
     'login.create': 'Crear sala',
     'login.or': 'o',
     'login.join': 'Entrar',
+    'login.rejoin': 'Volver a {code}',
+    'login.rejoinTitle': 'Únete de nuevo a tu última sala',
     'room.label': 'Sala',
     'room.copy': 'Copiar',
     'room.copied': '¡Copiado!',
@@ -169,6 +198,19 @@ const STRINGS = {
     'menu.hostOnly': 'Solo el anfitrión puede cambiar el modo de juego.',
     'menu.editWords': 'Editar lista de palabras',
     'menu.editPlaces': 'Editar lista de lugares',
+    'menu.settings': 'Ajustes de la sala',
+    'settings.title': 'Ajustes de la sala',
+    'settings.hint': 'Solo el anfitrión puede cambiar estas opciones.',
+    'settings.turnClock': 'Reloj de turno',
+    'settings.turnClockNote': 'Un temporizador compartido que recorre la mesa, un jugador a la vez.',
+    'settings.turnSeconds': 'Segundos por turno',
+    'settings.saved': '¡Ajustes de la sala guardados!',
+    'clock.turnOf': 'Turno de {name}',
+    'clock.ready': 'Presiona empezar para recorrer la mesa',
+    'clock.waitHost': 'Esperando a que el anfitrión empiece el reloj',
+    'clock.start': '▶ Empezar',
+    'clock.pause': '⏸ Pausar',
+    'clock.next': '⏭ Siguiente',
     'mode.guess': 'Quién soy',
     'mode.impostor': 'Impostor',
     'mode.spy': 'Espía',
@@ -243,10 +285,14 @@ const STRINGS = {
     'editor.wordsTitle': 'Editar la lista de palabras',
     'editor.placesTitle': 'Editar la lista de lugares',
     'editor.hint':
-      'El secreto que recibe cada jugador honesto al empezar una ronda. Escríbelo en inglés y en español — deja vacío el campo en español para repetir la palabra inglesa.',
-    'editor.phEn': 'Palabra en inglés',
-    'editor.phEs': 'Palabra en español',
+      'El secreto que recibe cada jugador honesto al empezar una ronda — se usa tal cual está escrito. Importa un .txt (una entrada por línea) para crear una lista larga.',
+    'editor.ph': 'Nueva palabra o frase',
     'editor.add': 'Agregar',
+    'editor.import': 'Importar .txt',
+    'editor.importHint': 'Una entrada por línea',
+    'editor.imported': '{n} entradas agregadas.',
+    'editor.importNone': 'No hay entradas nuevas en ese archivo.',
+    'editor.importTooBig': 'Ese archivo es demasiado grande.',
     'editor.done': 'Listo',
     'editor.remove': 'Quitar esta entrada',
     'editor.loading': 'Cargando…',
@@ -275,9 +321,16 @@ const STRINGS = {
     'err.roundStarted': 'La ronda ya empezó — espera a la siguiente.',
     'err.voteTarget': 'Vota por otro jugador.',
     'err.hostLists': 'Solo el anfitrión puede editar las listas.',
+    'err.hostSettings': 'Solo el anfitrión puede cambiar los ajustes de la sala.',
+    'err.settingsInvalid': 'Ajustes no válidos.',
+    'err.settingsSeconds': 'Duración de turno desconocida.',
+    'err.hostClock': 'Solo el anfitrión puede controlar el reloj de turno.',
+    'err.clockOff': 'Activa el reloj en los ajustes de la sala primero.',
+    'err.clockSkip': 'Solo el anfitrión o el jugador de turno puede pasar.',
     'err.listKind': 'Lista desconocida.',
     'err.listEmpty': 'La lista necesita al menos una entrada.',
-    'err.listTooBig': 'La lista es demasiado larga (máx. 100 entradas).',
+    'err.listTooBig': 'La lista es demasiado larga (máx. 1000 entradas).',
+    'err.importTooBig': 'Ese archivo es demasiado grande.',
     'err.listEntry': 'Cada entrada necesita una palabra.',
     'err.roundPool': 'Agrega al menos una palabra o lugar primero.',
   },
@@ -296,6 +349,28 @@ let lang = (() => {
   } catch {}
   return navigator.language?.toLowerCase().startsWith('es') ? 'es' : 'en'
 })()
+
+/* small localStorage helpers — the login remembers the player and their last room */
+const readStore = (key) => {
+  try {
+    return localStorage.getItem(key) ?? ''
+  } catch {
+    return ''
+  }
+}
+const writeStore = (key, value) => {
+  try {
+    localStorage.setItem(key, value)
+  } catch {}
+}
+const forgetStore = (key) => {
+  try {
+    localStorage.removeItem(key)
+  } catch {}
+}
+
+let lastSavedName = ''
+let lastCode = ''
 
 const has = (key) => key in STRINGS[lang] || key in STRINGS.en
 
@@ -327,6 +402,7 @@ function refreshText() {
   paintFlags()
   updateLangNames()
   paintError()
+  syncRejoin()
   if (me) {
     renderSeats()
     renderDeck()
@@ -335,6 +411,7 @@ function refreshText() {
   if (zoomCard && !$('zoom').hidden) paintZoom()
   if (lastResult && !$('result').hidden) paintResult(lastResult)
   if (!$('editor').hidden) paintEditor()
+  if (!$('settings').hidden) paintSettings()
 }
 
 function setLang(next) {
@@ -370,6 +447,12 @@ let dealt = new Set()
 let mode = 'guess'
 let round = null
 let myRole = null
+/* host-editable room settings + the shared turn clock */
+let settings = { turnClock: { enabled: false, seconds: 60 } }
+let turn = null
+let draftClock = null
+let lastTurnId = null
+let churnClock = false
 let seenState = false
 let shownResult = null
 let lastResult = null
@@ -431,6 +514,12 @@ function connect(resume) {
     if (msg.t === 'welcome') {
       me = msg.you
       palette = msg.palette
+      /* remember who and where, so a refresh or an accidental close can rejoin in one click */
+      lastSavedName = me.username
+      lastCode = msg.code
+      writeStore('gw.name', me.username)
+      writeStore('gw.code', msg.code)
+      syncRejoin()
       if (pending) {
         session = pending
         pending = null
@@ -445,6 +534,10 @@ function connect(resume) {
       cards = msg.cards
       mode = msg.mode || 'guess'
       round = msg.round || null
+      if (msg.settings) settings = msg.settings
+      turn = msg.turn || null
+      churnClock = (turn?.playerId ?? null) !== lastTurnId
+      lastTurnId = turn?.playerId ?? null
       if (!round) myRole = null
       const self = players.find((player) => player.id === me.id)
       if (self) me = self
@@ -467,11 +560,18 @@ function connect(resume) {
       listKind = msg.kind
       listItems = msg.items
       if (!$('editor').hidden) renderList()
+      /* only import replies carry `added` */
+      if (Number.isInteger(msg.added)) toast(msg.added ? 'editor.imported' : 'editor.importNone', { n: msg.added })
     } else if (msg.t === 'error') {
       if (me) toast(serverText(msg))
       else {
         pending = null /* a rejected create/join must not be retried on reconnect */
         session = null
+        if (msg.code === 'roomNotFound') {
+          lastCode = '' /* that room is gone — stop offering to rejoin it */
+          forgetStore('gw.code')
+          syncRejoin()
+        }
         const key = msg.code && has(`err.${msg.code}`) ? `err.${msg.code}` : null
         showError(key, {}, key ? '' : msg.message)
       }
@@ -489,6 +589,10 @@ function connect(resume) {
     mode = 'guess'
     round = null
     myRole = null
+    settings = { turnClock: { enabled: false, seconds: 60 } }
+    turn = null
+    lastTurnId = null
+    churnClock = false
     seenState = false
     shownResult = null
     lastResult = null
@@ -500,6 +604,7 @@ function connect(resume) {
     closeZoom()
     closeResult()
     closeMenu()
+    closeSettings()
     show(login)
     if (session) return reconnect('net.reconnect')
     /* not in a room and not a deliberate leave: keep trying (Render cold starts sleep) */
@@ -580,6 +685,15 @@ function renderSeats() {
       pill.textContent = String(voters.length)
       pill.title = t('votes.by', { names: voters.map(nameOf).join(', ') })
       seat.append(pill)
+    }
+
+    /* the cold-cyan marker + ring: the only loud thing on the table */
+    if (settings.turnClock.enabled && turn?.playerId === player.id) {
+      seat.classList.add('turn-active')
+      const pointer = document.createElement('span')
+      pointer.className = 'turn-pointer'
+      pointer.setAttribute('aria-hidden', 'true')
+      seat.append(pointer)
     }
 
     seat.title = isMe
@@ -735,7 +849,8 @@ function buildRoleCard(angle) {
   } else {
     const secret = document.createElement('span')
     secret.className = 'role-secret'
-    secret.textContent = myRole.secret?.[lang] ?? myRole.secret?.en ?? ''
+    /* secrets are single-language strings — the UI language never translates them */
+    secret.textContent = myRole.secret ?? ''
     entry.append(secret)
   }
   return entry
@@ -793,6 +908,7 @@ function renderDeck() {
   center.className = 'table-center'
   if (mode === 'guess') {
     center.innerHTML = 'Guess<br />Who'
+    if (settings.turnClock.enabled) center.append(buildClock())
     deck.replaceChildren(center)
     return
   }
@@ -810,6 +926,7 @@ function renderDeck() {
     center.append(centerNote('center.over'))
     if (me?.admin) center.append(centerButton('startRound', 'center.start', 'primary'))
   }
+  if (settings.turnClock.enabled) center.append(buildClock())
   deck.replaceChildren(center)
 }
 
@@ -825,6 +942,8 @@ function syncChrome() {
   const editable = Boolean(me?.admin && (mode === 'impostor' || mode === 'spy'))
   $('edit-list').hidden = !editable
   if (editable) $('edit-list-label').textContent = t(mode === 'impostor' ? 'menu.editWords' : 'menu.editPlaces')
+  $('room-settings').hidden = !me?.admin
+  if (!$('settings').hidden && !me?.admin) closeSettings() /* a demoted host loses the sheet */
   hint.textContent = t(mode === 'guess' ? 'hint.guess' : 'hint.round')
 }
 
@@ -916,12 +1035,11 @@ function openEditor() {
   listKind = mode === 'impostor' ? 'words' : mode === 'spy' ? 'places' : null
   if (!listKind) return
   listItems = []
-  $('editor-en').value = ''
-  $('editor-es').value = ''
+  $('editor-word').value = ''
   paintEditor()
   $('editor').hidden = false
   ws?.send(JSON.stringify({ t: 'getLists', kind: listKind }))
-  $('editor-en').focus()
+  $('editor-word').focus()
 }
 
 function closeEditor() {
@@ -948,17 +1066,9 @@ function renderList() {
   listItems.forEach((item, index) => {
     const row = document.createElement('div')
     row.className = 'editor-row'
-    const pair = document.createElement('span')
-    pair.className = 'editor-pair'
-    const primary = document.createElement('strong')
-    primary.textContent = item[lang] || item.en
-    pair.append(primary)
-    const other = lang === 'es' ? item.en : item.es
-    if (other && other !== primary.textContent) {
-      const secondary = document.createElement('span')
-      secondary.textContent = ` · ${other}`
-      pair.append(secondary)
-    }
+    const word = document.createElement('span')
+    word.className = 'editor-pair'
+    word.textContent = item
     const remove = document.createElement('button')
     remove.className = 'editor-x'
     remove.type = 'button'
@@ -966,7 +1076,7 @@ function renderList() {
     remove.title = t('editor.remove')
     remove.disabled = listItems.length <= 1 /* a list always keeps at least one entry */
     remove.addEventListener('click', () => sendLists(listItems.filter((_, i) => i !== index)))
-    row.append(pair, remove)
+    row.append(word, remove)
     box.append(row)
   })
 }
@@ -977,13 +1087,11 @@ function sendLists(items) {
 
 function editorAdd() {
   if (listItems.length === 0) return /* still loading — never overwrite a list we haven't seen */
-  const en = $('editor-en').value.trim()
-  if (!en) return toast('editor.needWord')
-  const es = $('editor-es').value.trim() || en
-  $('editor-en').value = ''
-  $('editor-es').value = ''
-  sendLists([...listItems, { en, es }])
-  $('editor-en').focus()
+  const entry = $('editor-word').value.trim()
+  if (!entry) return toast('editor.needWord')
+  $('editor-word').value = ''
+  sendLists([...listItems, entry])
+  $('editor-word').focus()
 }
 
 $('edit-list').addEventListener('click', openEditor)
@@ -992,10 +1100,142 @@ $('editor').addEventListener('click', (event) => {
   if (event.target === $('editor')) closeEditor()
 })
 $('editor-add').addEventListener('click', editorAdd)
-$('editor-en').addEventListener('keydown', (event) => event.key === 'Enter' && editorAdd())
-$('editor-es').addEventListener('keydown', (event) => event.key === 'Enter' && editorAdd())
+$('editor-word').addEventListener('keydown', (event) => event.key === 'Enter' && editorAdd())
 
-/* avatar picker */
+/* ——— list import (.txt: one entry per line) ——— */
+
+$('editor-import').addEventListener('click', () => $('editor-file').click())
+$('editor-file').addEventListener('change', async (event) => {
+  const file = event.target.files?.[0]
+  event.target.value = ''
+  if (!file) return
+  if (file.size > IMPORT_MAX_CHARS) return toast('editor.importTooBig')
+  const text = await file.text()
+  ws?.send(JSON.stringify({ t: 'importList', kind: listKind, text }))
+})
+
+/* ——— turn clock display (table center) ——— */
+
+const TURN_SECONDS = [15, 30, 45, 60, 90, 120]
+
+const remainingMs = () =>
+  turn?.running && turn.endsAt ? Math.max(0, turn.endsAt - Date.now()) : settings.turnClock.seconds * 1000
+
+function formatClock(ms) {
+  const total = Math.ceil(ms / 1000)
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`
+}
+
+const clockButton = (action, key) => {
+  const button = document.createElement('button')
+  button.type = 'button'
+  button.className = 'ghost clock-btn'
+  button.textContent = t(key)
+  button.addEventListener('click', () => ws?.send(JSON.stringify({ t: action })))
+  return button
+}
+
+function buildClock() {
+  const box = document.createElement('div')
+  box.className = 'turn-clock'
+
+  const label = document.createElement('div')
+  label.className = 'turn-label'
+  label.textContent = turn?.playerId
+    ? t('clock.turnOf', { name: nameOf(turn.playerId) })
+    : t(me?.admin ? 'clock.ready' : 'clock.waitHost')
+  box.append(label)
+
+  const time = document.createElement('div')
+  time.className = 'turn-time'
+  const left = remainingMs()
+  time.textContent = formatClock(left)
+  time.classList.toggle('low', Boolean(turn?.running) && left <= 5000) /* no flash of gold before the first tick */
+  if (churnClock) {
+    time.classList.add('turn-churn')
+    churnClock = false
+  }
+  box.append(time)
+
+  /* the host runs the clock; the player holding the floor may pass it on too */
+  const holdsFloor = Boolean(turn?.playerId && turn.playerId === me.id)
+  if (me?.admin || holdsFloor) {
+    const controls = document.createElement('div')
+    controls.className = 'clock-controls'
+    if (me?.admin) {
+      controls.append(
+        clockButton(turn?.running ? 'pauseTurnClock' : 'startTurnClock', turn?.running ? 'clock.pause' : 'clock.start'),
+      )
+    }
+    controls.append(clockButton('nextTurn', 'clock.next'))
+    box.append(controls)
+  }
+  return box
+}
+
+/* The countdown ticks locally between states — no extra network traffic. */
+setInterval(() => {
+  if (!settings.turnClock.enabled || !turn?.running) return
+  const node = document.querySelector('.turn-time')
+  if (!node) return
+  const left = remainingMs()
+  node.textContent = formatClock(left)
+  node.classList.toggle('low', left <= 5000)
+}, 250)
+
+/* ——— room settings (host-only) ——— */
+
+function openSettings() {
+  closeMenu()
+  draftClock = { ...settings.turnClock }
+  paintSettings()
+  $('settings').hidden = false
+}
+
+function closeSettings() {
+  $('settings').hidden = true
+  draftClock = null
+}
+
+function paintSettings() {
+  const clock = draftClock ?? settings.turnClock
+  $('setting-clock').classList.toggle('on', clock.enabled)
+  $('setting-clock').setAttribute('aria-checked', String(clock.enabled))
+  const select = $('setting-seconds')
+  if (!select.options.length) {
+    for (const seconds of TURN_SECONDS) {
+      const option = document.createElement('option')
+      option.value = String(seconds)
+      option.textContent = `${seconds}s`
+      select.append(option)
+    }
+  }
+  select.value = String(clock.seconds)
+  select.disabled = !clock.enabled
+}
+
+$('room-settings').addEventListener('click', openSettings)
+$('settings-done').addEventListener('click', () => {
+  if (draftClock) {
+    ws?.send(JSON.stringify({ t: 'setSettings', settings: { turnClock: draftClock } }))
+    toast('settings.saved')
+  }
+  closeSettings()
+})
+$('setting-clock').addEventListener('click', () => {
+  if (!draftClock) return
+  draftClock.enabled = !draftClock.enabled
+  paintSettings()
+})
+$('setting-seconds').addEventListener('change', (event) => {
+  if (!draftClock) return
+  draftClock.seconds = Number(event.target.value)
+})
+$('settings').addEventListener('click', (event) => {
+  if (event.target === $('settings')) closeSettings()
+})
+
+/* ——— avatar picker ——— */
 
 function togglePicker(seat) {
   if (!picker.hidden) return closePicker()
@@ -1244,6 +1484,22 @@ $('join').addEventListener('click', () => send({ t: 'join', code: $('code').valu
 $('username').addEventListener('keydown', (e) => e.key === 'Enter' && $('create').click())
 $('code').addEventListener('keydown', (e) => e.key === 'Enter' && $('join').click())
 
+/* ——— rejoin the last room (name + code remembered across refreshes) ——— */
+
+function syncRejoin() {
+  const button = $('rejoin')
+  button.hidden = !lastCode
+  if (lastCode) {
+    button.textContent = t('login.rejoin', { code: lastCode })
+    button.title = t('login.rejoinTitle')
+  }
+}
+
+$('rejoin').addEventListener('click', () => {
+  if (!$('username').value.trim() && lastSavedName) $('username').value = lastSavedName
+  send({ t: 'join', code: lastCode })
+})
+
 $('copy').addEventListener('click', () => {
   navigator.clipboard?.writeText($('room-code-value').textContent)
   $('copy').textContent = t('room.copied')
@@ -1283,6 +1539,7 @@ document.addEventListener('keydown', (event) => {
   closeMenu()
   closeResult()
   closeEditor()
+  closeSettings()
 })
 
 for (const type of ['dragover', 'drop']) {
@@ -1291,6 +1548,13 @@ for (const type of ['dragover', 'drop']) {
     event.preventDefault()
   })
 }
+
+/* remember the player and their last room: a refresh rejoins in one click */
+lastSavedName = readStore('gw.name')
+lastCode = readStore('gw.code')
+if (lastSavedName) $('username').value = lastSavedName
+if (lastCode) $('code').value = lastCode
+syncRejoin()
 
 applyStatic()
 paintFlags()

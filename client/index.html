@@ -23,6 +23,7 @@
           <input id="code" maxlength="4" placeholder="CODE" autocomplete="off" spellcheck="false" />
           <button id="join" data-i18n="login.join">Join</button>
         </div>
+        <button id="rejoin" class="ghost rejoin" type="button" hidden></button>
         <p id="error" class="error" hidden></p>
       </section>
 
@@ -58,9 +59,13 @@
                 <button class="menu-item mode-option" type="button" role="menuitemradio" data-mode="spy">
                   <span class="tick">✓</span><span data-i18n="mode.spy">Spy</span>
                 </button>
-                <button id="edit-list" class="menu-item edit-entry" type="button" role="menuitem" hidden>
+                <button id="edit-list" class="menu-item host-entry" type="button" role="menuitem" hidden>
                   <span class="menu-ico" aria-hidden="true">✏️</span>
                   <span id="edit-list-label"></span>
+                </button>
+                <button id="room-settings" class="menu-item host-entry" type="button" role="menuitem" hidden>
+                  <span class="menu-ico" aria-hidden="true">⚙️</span>
+                  <span data-i18n="menu.settings">Room settings</span>
                 </button>
                 <div class="menu-sep"></div>
                 <button id="menu-lang" class="menu-item" type="button" role="menuitem">
@@ -131,12 +136,49 @@
         <p id="editor-hint" class="sheet-hint"></p>
         <div id="editor-list" class="editor-list"></div>
         <div class="editor-add">
-          <input id="editor-en" maxlength="40" autocomplete="off" data-i18n-ph="editor.phEn" placeholder="Word in English" />
-          <input id="editor-es" maxlength="40" autocomplete="off" data-i18n-ph="editor.phEs" placeholder="Word in Spanish" />
+          <input id="editor-word" maxlength="40" autocomplete="off" data-i18n-ph="editor.ph" placeholder="New word or phrase" />
           <button id="editor-add" class="primary" type="button" data-i18n="editor.add">Add</button>
+        </div>
+        <div class="editor-import">
+          <button id="editor-import" class="ghost" type="button" data-i18n="editor.import">Import .txt</button>
+          <span class="import-hint" data-i18n="editor.importHint">One entry per line</span>
+          <input id="editor-file" type="file" accept=".txt,text/plain" hidden />
         </div>
         <div class="row">
           <button id="editor-done" class="ghost" type="button" data-i18n="editor.done">Done</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="settings" class="overlay" hidden>
+      <div class="sheet settings-sheet">
+        <h3 data-i18n="settings.title">Room settings</h3>
+        <p class="sheet-hint" data-i18n="settings.hint">Only the host can change these options.</p>
+        <div class="setting-row">
+          <div class="setting-text">
+            <strong data-i18n="settings.turnClock">Turn clock</strong>
+            <span data-i18n="settings.turnClockNote">A shared timer that goes around the table, one player at a time.</span>
+          </div>
+          <button
+            id="setting-clock"
+            class="switch"
+            type="button"
+            role="switch"
+            aria-checked="false"
+            data-i18n-label="settings.turnClock"
+            aria-label="Turn clock"
+          >
+            <span class="knob"></span>
+          </button>
+        </div>
+        <div class="setting-row">
+          <div class="setting-text">
+            <strong data-i18n="settings.turnSeconds">Seconds per turn</strong>
+          </div>
+          <select id="setting-seconds" data-i18n-label="settings.turnSeconds" aria-label="Seconds per turn"></select>
+        </div>
+        <div class="row">
+          <button id="settings-done" class="primary" type="button" data-i18n="editor.done">Done</button>
         </div>
       </div>
     </div>

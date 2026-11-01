@@ -8,6 +8,8 @@
   --accent: #e8a33d;
   --accent-ink: #2a1a08;
   --wine: #6d2727;
+  /* the one cold-bright color on a warm table: whose turn it is */
+  --turn: #45d9f2;
 }
 
 * {
@@ -215,6 +217,18 @@ button.danger:hover {
   gap: 10px;
 }
 
+.rejoin {
+  width: 100%;
+  margin-top: 10px;
+  padding: 10px 16px;
+  font-size: 13.5px;
+  color: var(--muted);
+}
+
+.rejoin:hover {
+  color: var(--text);
+}
+
 .error {
   margin: 16px 0 0;
   color: #f87171;
@@ -377,6 +391,76 @@ button.danger:hover {
   opacity: 0.7;
 }
 
+/* ——— turn clock (table center + active seat) ——— */
+
+.turn-clock {
+  margin-top: 14px;
+  opacity: 1;
+}
+
+.turn-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  color: #f6dcae;
+  opacity: 0.75;
+}
+
+.turn-time {
+  margin-top: 2px;
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  font-variant-numeric: tabular-nums;
+  color: #f6dcae;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+  transition: color 0.2s ease;
+}
+
+.turn-time.low {
+  color: #f87171;
+  animation: tick-low 0.5s ease-in-out infinite alternate;
+}
+
+.turn-time.turn-churn {
+  animation: clock-churn 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+
+.clock-controls {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.clock-btn {
+  padding: 6px 12px;
+  font-size: 12px;
+  opacity: 1;
+}
+
+.seat.turn-active .emoji {
+  border-color: var(--turn);
+  animation: turn-pulse 1.4s ease-in-out infinite;
+}
+
+/* the floor: a marker bobbing over the head of the player the clock is on */
+.turn-pointer {
+  position: absolute;
+  top: -25px;
+  left: 50%;
+  width: 26px;
+  height: 19px;
+  background: var(--turn);
+  clip-path: polygon(50% 100%, 0 0, 100% 0);
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.65));
+  transform: translateX(-50%);
+  animation: turn-bob 0.9s ease-in-out infinite alternate;
+  pointer-events: none;
+  z-index: 3;
+}
+
 #seats {
   position: absolute;
   inset: 0;
@@ -501,7 +585,10 @@ button.danger:hover {
   right: 0;
   z-index: 15;
   width: 236px;
+  /* the menu grew two host rows — keep it usable on short screens */
+  max-height: min(72dvh, 480px);
   padding: 8px;
+  overflow-y: auto;
   text-align: left;
   background: linear-gradient(180deg, var(--panel-2), var(--panel));
   border: 1px solid var(--line);
@@ -595,13 +682,13 @@ button.danger:hover {
   background: var(--line);
 }
 
-/* divider drawn only while the host-only row is visible */
-.menu-item.edit-entry {
+/* divider drawn only while a host-only row is visible */
+.menu-item.host-entry {
   position: relative;
   margin-top: 13px;
 }
 
-.menu-item.edit-entry::before {
+.menu-item.host-entry::before {
   content: "";
   position: absolute;
   top: -6px;
@@ -1121,8 +1208,26 @@ button.danger:hover {
 
 .editor-add {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
+}
+
+.editor-import {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.editor-import button {
+  padding: 8px 12px;
+  font-size: 13px;
+}
+
+.import-hint {
+  font-size: 12px;
+  color: var(--muted);
+  opacity: 0.75;
 }
 
 .editor-add input {
@@ -1133,6 +1238,98 @@ button.danger:hover {
 .editor-add .primary {
   margin-top: 0;
   padding: 10px 16px;
+}
+
+/* ——— room settings sheet ——— */
+
+.settings-sheet {
+  width: min(430px, 100%);
+}
+
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 0;
+}
+
+.setting-row + .setting-row {
+  border-top: 1px solid var(--line);
+}
+
+.setting-text {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  text-align: left;
+}
+
+.setting-text strong {
+  font-size: 14px;
+}
+
+.setting-text span {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+/* pill switch */
+.switch {
+  position: relative;
+  flex: 0 0 auto;
+  width: 46px;
+  height: 26px;
+  padding: 0;
+  background: #191209;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+}
+
+.switch .knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  background: var(--muted);
+  border-radius: 50%;
+  transition: transform 0.18s ease, background 0.18s ease;
+}
+
+.switch.on {
+  background: rgba(232, 163, 61, 0.22);
+  border-color: var(--accent);
+}
+
+.switch.on .knob {
+  transform: translateX(20px);
+  background: var(--accent);
+}
+
+select {
+  flex: 0 0 auto;
+  min-width: 86px;
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  background: #191209;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(232, 163, 61, 0.18);
+}
+
+select:disabled {
+  opacity: 0.45;
 }
 
 /* ——— round result sheet ——— */
@@ -1325,6 +1522,45 @@ textarea:focus {
   to {
     opacity: 1;
     transform: translateX(-50%);
+  }
+}
+
+@keyframes tick-low {
+  to {
+    transform: scale(1.08);
+  }
+}
+
+@keyframes clock-churn {
+  from {
+    opacity: 0.3;
+    transform: scale(0.7);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes turn-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 8px 16px rgba(0, 0, 0, 0.5),
+      0 0 0 4px rgba(69, 217, 242, 0.4),
+      0 0 16px rgba(69, 217, 242, 0.35);
+  }
+  50% {
+    box-shadow:
+      0 8px 16px rgba(0, 0, 0, 0.5),
+      0 0 0 9px rgba(69, 217, 242, 0.16),
+      0 0 30px rgba(69, 217, 242, 0.55);
+  }
+}
+
+@keyframes turn-bob {
+  to {
+    transform: translateX(-50%) translateY(5px);
   }
 }
 
