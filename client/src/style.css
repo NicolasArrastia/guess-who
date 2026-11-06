@@ -1426,8 +1426,11 @@ textarea:focus {
   left: 50%;
   bottom: 24px;
   z-index: 30;
+  max-width: min(92vw, 460px);
   padding: 10px 16px;
   font-size: 14px;
+  line-height: 1.4;
+  text-align: center;
   background: linear-gradient(180deg, var(--panel-2), var(--panel));
   border: 1px solid rgba(232, 163, 61, 0.4);
   border-radius: 999px;

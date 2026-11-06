@@ -16,7 +16,7 @@ npm workspaces monorepo:
 - `npm run build` — build the client to `client/dist`. Required before `npm start`: the server serves that folder and 404s with "Client not built" otherwise.
 - `npm start` — production server on port 3001 (`PORT` env overrides).
 
-There is **no** test, lint, format, typecheck, or CI tooling. Do not invent verification steps. `pnpm-lock.yaml` in the repo root is an untracked local stray; `package-lock.json` is the committed lockfile.
+There is **no** test, lint, format, typecheck, or CI tooling. Do not invent verification steps. `package-lock.json` is the committed lockfile — `pnpm-lock.yaml` is also tracked but stray; do not add pnpm to workflows.
 
 ## Architecture gotchas
 

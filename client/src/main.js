@@ -1,3 +1,7 @@
+import { inject } from '@vercel/analytics'
+
+inject()
+
 const $ = (id) => document.getElementById(id)
 
 const login = $('login')
@@ -101,6 +105,7 @@ const STRINGS = {
     'img.link': 'That link is not an image.',
     'net.connect': 'Connecting…',
     'net.reconnect': 'Reconnecting…',
+    'net.offline': 'Couldn’t connect to the server. It may be starting up — give it a minute and try again.',
     'center.start': 'Start round',
     'center.end': 'End round',
     'center.waitHost': 'Waiting for the host to start…',
@@ -257,6 +262,7 @@ const STRINGS = {
     'img.link': 'Ese enlace no es una imagen.',
     'net.connect': 'Conectando…',
     'net.reconnect': 'Reconectando…',
+    'net.offline': 'No se pudo conectar con el servidor. Puede estar arrancando — dale un minuto y vuelve a intentarlo.',
     'center.start': 'Empezar ronda',
     'center.end': 'Terminar ronda',
     'center.waitHost': 'Esperando a que el anfitrión empiece…',
@@ -435,6 +441,8 @@ let session = null
 let attempts = 0
 let retryTimer = null
 let leftByUser = false
+/* only one "server unreachable" toast per outage */
+let offlineToastShown = false
 let players = []
 let cards = []
 let palette = { avatars: [], colors: [] }
@@ -493,12 +501,18 @@ function showError(key, vars = {}, raw = '') {
 
 const serverText = (msg) => (msg.code && has(`err.${msg.code}`) ? t(`err.${msg.code}`) : msg.message)
 
-function toast(key, vars) {
+function toast(key, vars, duration = 3000) {
   const node = $('toast')
   node.textContent = has(key) ? t(key, vars) : key
   node.hidden = false
   clearTimeout(node.timer)
-  node.timer = setTimeout(() => (node.hidden = true), 3000)
+  node.timer = setTimeout(() => (node.hidden = true), duration)
+}
+
+function hideToast() {
+  const node = $('toast')
+  clearTimeout(node.timer)
+  node.hidden = true
 }
 
 function connect(resume) {
@@ -506,6 +520,10 @@ function connect(resume) {
   ws = socket
   socket.addEventListener('open', () => {
     attempts = 0
+    if (offlineToastShown) {
+      offlineToastShown = false
+      hideToast()
+    }
     resume?.()
   })
   socket.addEventListener('message', (event) => {
@@ -616,6 +634,11 @@ function connect(resume) {
 /* Reopen the socket (and re-send the create/join that got us into the room, if any). */
 function reconnect(key) {
   const delay = Math.min(8000, 1000 * 2 ** attempts++)
+  /* a couple of quick failures mean the server is down or still waking up */
+  if (attempts > 2 && !offlineToastShown) {
+    offlineToastShown = true
+    toast('net.offline', null, 8000)
+  }
   showError(key)
   clearTimeout(retryTimer)
   retryTimer = setTimeout(() => {
